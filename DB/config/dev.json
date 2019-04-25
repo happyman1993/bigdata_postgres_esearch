@@ -1,0 +1,10 @@
+{
+    "dev": {
+        "host": "localhost",
+        "user": "postgres",
+        "password": "root",
+        "database": "hydrapath",
+        "driver": "postgresql",
+        "multipleStatements": true
+    }, "sql_file": true
+}
