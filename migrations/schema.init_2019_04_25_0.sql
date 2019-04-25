@@ -1,6 +1,6 @@
 
 CREATE TABLE public.client_info (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	email varchar(50) NOT NULL,
 	unique_id int4 NOT NULL,
 	last_update timestamp NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE public.client_info (
 CREATE INDEX client_info_id_idx ON public.client_info USING btree (id);
 
 CREATE TABLE public.game_info (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	"name" varchar(50) NULL,
 	protocol varchar(5) NULL,
 	CONSTRAINT game_info_pk PRIMARY KEY (id)
@@ -18,7 +18,7 @@ CREATE TABLE public.game_info (
 CREATE UNIQUE INDEX game_info_id_idx ON public.game_info USING btree (id);
 
 CREATE TABLE public.server_info (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	"name" varchar NULL,
 	display_name varchar(50) NULL,
 	country varchar(255) NULL,
@@ -37,7 +37,7 @@ CREATE TABLE public.server_info (
 CREATE UNIQUE INDEX server_info_id_idx ON public.server_info USING btree (id);
 
 CREATE TABLE public.process_info (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	game_id int4 NULL,
 	"name" varchar(50) NULL,
 	CONSTRAINT process_info_pk PRIMARY KEY (id),
@@ -47,7 +47,7 @@ CREATE INDEX process_info_game_id_idx ON public.process_info USING btree (game_i
 CREATE UNIQUE INDEX process_info_id_idx ON public.process_info USING btree (id);
 
 CREATE TABLE public.client_game_info (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	client_id int4 NOT NULL,
 	game_id int4 NOT NULL,
 	server_id int4 NOT NULL,
@@ -61,7 +61,7 @@ CREATE TABLE public.client_game_info (
 CREATE INDEX client_game_info_id_idx ON public.client_game_info USING btree (id, client_id, game_id, server_id);
 
 CREATE TABLE public.client_info_day (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	client_id int4 NULL,
 	game_id int4 NULL,
 	time_gameplay int4 NULL,
@@ -101,7 +101,7 @@ CREATE TABLE public.client_info_login (
 CREATE INDEX client_info_login_id_idx ON public.client_info_login USING btree (id, client_id);
 
 CREATE TABLE public.client_info_network (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	client_id int4 NULL,
 	download float8 NULL,
 	upload float8 NULL,
@@ -113,7 +113,7 @@ CREATE TABLE public.client_info_network (
 );
 
 CREATE TABLE public.client_info_network_day (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	client_id int4 NULL,
 	server_id int4 NULL,
 	process_id int4 NULL,
@@ -142,7 +142,7 @@ CREATE TABLE public.client_info_server_network (
 CREATE INDEX client_info_server_network_client_id_idx ON public.client_info_server_network USING btree (client_id, server_id);
 
 CREATE TABLE public.game_info_network_day (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	client_id int4 NULL,
 	game_id int4 NULL,
 	pps_in int4 NULL,
@@ -157,7 +157,7 @@ CREATE TABLE public.game_info_network_day (
 CREATE INDEX game_info_network_day_id_idx ON public.game_info_network_day USING btree (id, client_id, game_id);
 
 CREATE TABLE public.game_info_server (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	game_id int4 NULL,
 	process_id int4 NULL,
 	ip varchar(255) NULL,
@@ -179,7 +179,7 @@ CREATE TABLE public.general_info_day (
 CREATE INDEX general_info_day_id_idx ON public.general_info_day USING btree (id);
 
 CREATE TABLE public.server_info_machine (
-	id int4 NOT NULL,
+	id serial NOT NULL,
 	server_id int4 NOT NULL,
 	client_tcp int4 NULL,
 	client_udp int4 NULL,
