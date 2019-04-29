@@ -1,11 +1,21 @@
+CREATE TABLE public.company_info (
+	id serial NOT NULL,
+	"name" varchar(255) NOT NULL,
+	create_at timestamp NULL,
+	email varchar(50) NULL,
+	CONSTRAINT company_info_pk PRIMARY KEY (id)
+);
+CREATE INDEX company_info_id_idx ON public.company_info USING btree (id);
 
 CREATE TABLE public.client_info (
 	id serial NOT NULL,
 	email varchar(50) NOT NULL,
-	unique_id int4 NOT NULL,
+	unique_id varchar(50) NOT NULL,
+	company_id int4 NULL,
 	last_update timestamp NOT NULL,
 	create_at timestamp NULL,
-	CONSTRAINT client_info_pk PRIMARY KEY (id)
+	CONSTRAINT client_info_pk PRIMARY KEY (id),
+	CONSTRAINT client_info_company_info_fk FOREIGN KEY (company_id) REFERENCES company_info(id)
 );
 CREATE INDEX client_info_id_idx ON public.client_info USING btree (id);
 
@@ -95,6 +105,10 @@ CREATE TABLE public.client_info_login (
 	client_id int4 NOT NULL,
 	ip varchar(255) NOT NULL,
 	last_login timestamp NOT NULL,
+	region varchar(30) NULL,
+	country varchar(30) NULL,
+	city varchar(50) NULL,
+	isp varchar(50) NULL,
 	CONSTRAINT client_info_login_pk PRIMARY KEY (id),
 	CONSTRAINT client_info_login_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id)
 );
@@ -195,59 +209,74 @@ CREATE TABLE public.server_info_machine (
 CREATE UNIQUE INDEX server_info_machine_id_idx ON public.server_info_machine USING btree (id);
 
 
+
+INSERT INTO
+	public.company_info
+VALUES
+(1, 'aaa','2012-03-24 00:00:00.000','dickens.aliya@hotmail.com'),
+(2, 'bbb','2016-12-07 00:00:00.000','jenkins.gisselle@hotmail.com'),
+(3, 'ccc','2015-08-09 00:00:00.000','skemmer@cormier.com'),
+(4,'ddd','2014-08-29 00:00:00.000','schmitt.leann@marquardt.com'),
+(5,'eee','2014-05-17 00:00:00.000','adriana92@yahoo.com'),
+(6,'fff','2014-11-25 00:00:00.000','zharber@powlowski.org'),
+(7,'ggg','2009-05-24 00:00:00.000','claire86@yahoo.com'),
+(8,'hhh','2009-05-24 00:00:00.000','josiah48@rolfson.net'),
+(9,'iii','2009-05-24 00:00:00.000','beth06@tromp.com'),
+(10,'jjj','2009-05-24 00:00:00.000','bradford62@hauck.biz');
+
 INSERT into
 	public.client_info
 VALUES
-('21','annabell.parker@west.com','5','1993-07-23 00:00:00','1990-08-05 00:00:00'),
-('22','jonatan39@beer.net','9','2004-08-30 00:00:00','1990-08-05 00:00:00'),
-('23','emacejkovic@paucek.net','5','1973-09-24 00:00:00','1990-08-05 00:00:00'),
-('24','qoconner@gmail.com','8','2006-01-02 00:00:00','1990-08-05 00:00:00'),
-('25','ashlynn97@gerlach.com','9','2015-09-06 00:00:00','1990-08-05 00:00:00'),
-('26','pouros.karolann@kohler.com','0','1970-03-16 00:00:00','1990-08-05 00:00:00'),
-('27','ciara37@schaden.com','9','1995-01-10 00:00:00','1990-08-05 00:00:00'),
-('28','sporer.nathaniel@hotmail.com','6','1972-10-12 00:00:00','1990-08-05 00:00:00'),
-('29','morissette.schuyler@gmail.com','9','2012-03-24 00:00:00','1990-08-05 00:00:00'),
-('30','ihane@hotmail.com','0','1988-01-19 00:00:00','1990-08-05 00:00:00'),
-('31','ole03@yahoo.com','3','1983-03-08 00:00:00','1990-08-05 00:00:00'),
-('32','ritchie.josefa@pollich.com','5','2016-12-07 00:00:00','1990-08-05 00:00:00'),
-('33','jakob.mccullough@hotmail.com','4','1978-10-01 00:00:00','1990-08-05 00:00:00'),
-('34','kleannon@gmail.com','4','1979-07-17 00:00:00','1990-08-05 00:00:00'),
-('35','nicolas26@yahoo.com','3','1974-07-25 00:00:00','1990-08-05 00:00:00'),
-('36','heller.rigoberto@lockman.com','9','1977-07-16 00:00:00','1990-08-05 00:00:00'),
-('37','braun.justyn@yahoo.com','0','2015-08-09 00:00:00','1990-08-05 00:00:00'),
-('38','concepcion.prohaska@jacobson.com','2','1974-12-23 00:00:00','1990-08-05 00:00:00'),
-('39','ykeebler@wyman.biz','7','1979-01-02 00:00:00','1990-08-05 00:00:00'),
-('40','pedro.rohan@hoeger.com','3','1996-07-14 00:00:00','1990-08-05 00:00:00'),
-('41','denesik.chesley@yahoo.com','6','1974-01-07 00:00:00','1990-08-05 00:00:00'),
-('42','callie.moore@koss.com','6','1978-06-12 00:00:00','1990-08-05 00:00:00'),
-('43','cummerata.brando@gmail.com','9','1976-10-28 00:00:00','1990-08-05 00:00:00'),
-('44','anabelle.doyle@hotmail.com','1','1973-04-20 00:00:00','1990-08-05 00:00:00'),
-('45','mitchell.hildegard@cruickshank.com','7','1997-08-05 00:00:00','1990-08-05 00:00:00'),
-('46','okon.carrie@yahoo.com','7','1971-04-08 00:00:00','1990-08-05 00:00:00'),
-('47','amalia99@schulist.com','7','2014-05-17 00:00:00','1990-08-05 00:00:00'),
-('48','gortiz@yahoo.com','1','2014-08-29 00:00:00','1990-08-05 00:00:00'),
-('49','alanis11@gmail.com','6','1985-12-23 00:00:00','1990-08-05 00:00:00'),
-('50','adrian.zboncak@rice.org','7','1971-08-28 00:00:00','1990-08-05 00:00:00'),
-('51','sawayn.cheyanne@lakin.com','1','1993-07-24 00:00:00','1990-08-05 00:00:00'),
-('52','dickens.aliya@hotmail.com','3','1991-08-22 00:00:00','1990-08-05 00:00:00'),
-('53','hreilly@lebsack.com','1','1985-10-27 00:00:00','1990-08-05 00:00:00'),
-('54','zieme.maybelle@roob.biz','8','2014-11-25 00:00:00','1990-08-05 00:00:00'),
-('55','raegan.heidenreich@hammes.org','7','1987-06-17 00:00:00','1990-08-05 00:00:00'),
-('56','frankie08@hotmail.com','3','1980-04-09 00:00:00','1990-08-05 00:00:00'),
-('57','skemmer@cormier.com','4','1992-02-09 00:00:00','1990-08-05 00:00:00'),
-('58','jenkins.gisselle@hotmail.com','6','1987-11-16 00:00:00','1990-08-05 00:00:00'),
-('59','schmitt.leann@marquardt.com','5','1996-09-09 00:00:00','1990-08-05 00:00:00'),
-('60','adriana92@yahoo.com','9','2009-05-24 00:00:00','1990-08-05 00:00:00'),
-('61','zharber@powlowski.org','0','1983-12-13 00:00:00','1990-08-05 00:00:00'),
-('62','claire86@yahoo.com','6','1995-03-26 00:00:00','1990-08-05 00:00:00'),
-('63','josiah48@rolfson.net','6','2013-06-06 00:00:00','1990-08-05 00:00:00'),
-('64','beth06@tromp.com','4','1971-10-18 00:00:00','1990-08-05 00:00:00'),
-('65','bradford62@hauck.biz','4','2008-07-12 00:00:00','1990-08-05 00:00:00'),
-('66','acruickshank@gmail.com','5','2004-08-03 00:00:00','1990-08-05 00:00:00'),
-('67','skiles.elmo@yahoo.com','6','1993-05-19 00:00:00','1990-08-05 00:00:00'),
-('68','bkessler@schmidt.com','4','2011-05-20 00:00:00','1990-08-05 00:00:00'),
-('69','belle66@reichel.com','7','2017-08-05 00:00:00','1990-08-05 00:00:00'),
-('70','rhermiston@yahoo.com','4','1989-04-08 00:00:00','1990-08-05 00:00:00');
+('21','annabell.parker@west.com','', '5','1993-07-23 00:00:00','1990-08-05 00:00:00'),
+('22','jonatan39@beer.net','', '9','2004-08-30 00:00:00','1990-08-05 00:00:00'),
+('23','emacejkovic@paucek.net','', '5','1973-09-24 00:00:00','1990-08-05 00:00:00'),
+('24','qoconner@gmail.com','', '8','2006-01-02 00:00:00','1990-08-05 00:00:00'),
+('25','ashlynn97@gerlach.com','', '9','2015-09-06 00:00:00','1990-08-05 00:00:00'),
+('26','pouros.karolann@kohler.com','', '1','1970-03-16 00:00:00','1990-08-05 00:00:00'),
+('27','ciara37@schaden.com','', '9','1995-01-10 00:00:00','1990-08-05 00:00:00'),
+('28','sporer.nathaniel@hotmail.com','', '6','1972-10-12 00:00:00','1990-08-05 00:00:00'),
+('29','morissette.schuyler@gmail.com','', '9','2012-03-24 00:00:00','1990-08-05 00:00:00'),
+('30','ihane@hotmail.com','', '2','1988-01-19 00:00:00','1990-08-05 00:00:00'),
+('31','ole03@yahoo.com','', '3','1983-03-08 00:00:00','1990-08-05 00:00:00'),
+('32','ritchie.josefa@pollich.com','', '5','2016-12-07 00:00:00','1990-08-05 00:00:00'),
+('33','jakob.mccullough@hotmail.com','', '4','1978-10-01 00:00:00','1990-08-05 00:00:00'),
+('34','kleannon@gmail.com','', '4','1979-07-17 00:00:00','1990-08-05 00:00:00'),
+('35','nicolas26@yahoo.com','', '3','1974-07-25 00:00:00','1990-08-05 00:00:00'),
+('36','heller.rigoberto@lockman.com','', '9','1977-07-16 00:00:00','1990-08-05 00:00:00'),
+('37','braun.justyn@yahoo.com','', '3','2015-08-09 00:00:00','1990-08-05 00:00:00'),
+('38','concepcion.prohaska@jacobson.com','', '2','1974-12-23 00:00:00','1990-08-05 00:00:00'),
+('39','ykeebler@wyman.biz','', '7','1979-01-02 00:00:00','1990-08-05 00:00:00'),
+('40','pedro.rohan@hoeger.com','', '3','1996-07-14 00:00:00','1990-08-05 00:00:00'),
+('41','denesik.chesley@yahoo.com','', '6','1974-01-07 00:00:00','1990-08-05 00:00:00'),
+('42','callie.moore@koss.com','', '6','1978-06-12 00:00:00','1990-08-05 00:00:00'),
+('43','cummerata.brando@gmail.com','', '9','1976-10-28 00:00:00','1990-08-05 00:00:00'),
+('44','anabelle.doyle@hotmail.com','', '1','1973-04-20 00:00:00','1990-08-05 00:00:00'),
+('45','mitchell.hildegard@cruickshank.com','', '7','1997-08-05 00:00:00','1990-08-05 00:00:00'),
+('46','okon.carrie@yahoo.com','', '7','1971-04-08 00:00:00','1990-08-05 00:00:00'),
+('47','amalia99@schulist.com','', '7','2014-05-17 00:00:00','1990-08-05 00:00:00'),
+('48','gortiz@yahoo.com','', '1','2014-08-29 00:00:00','1990-08-05 00:00:00'),
+('49','alanis11@gmail.com','', '6','1985-12-23 00:00:00','1990-08-05 00:00:00'),
+('50','adrian.zboncak@rice.org','', '7','1971-08-28 00:00:00','1990-08-05 00:00:00'),
+('51','sawayn.cheyanne@lakin.com','', '1','1993-07-24 00:00:00','1990-08-05 00:00:00'),
+('52','dickens.aliya@hotmail.com','', '3','1991-08-22 00:00:00','1990-08-05 00:00:00'),
+('53','hreilly@lebsack.com','', '1','1985-10-27 00:00:00','1990-08-05 00:00:00'),
+('54','zieme.maybelle@roob.biz','', '8','2014-11-25 00:00:00','1990-08-05 00:00:00'),
+('55','raegan.heidenreich@hammes.org','', '7','1987-06-17 00:00:00','1990-08-05 00:00:00'),
+('56','frankie08@hotmail.com','', '3','1980-04-09 00:00:00','1990-08-05 00:00:00'),
+('57','skemmer@cormier.com','', '4','1992-02-09 00:00:00','1990-08-05 00:00:00'),
+('58','jenkins.gisselle@hotmail.com','', '6','1987-11-16 00:00:00','1990-08-05 00:00:00'),
+('59','schmitt.leann@marquardt.com','', '5','1996-09-09 00:00:00','1990-08-05 00:00:00'),
+('60','adriana92@yahoo.com','', '9','2009-05-24 00:00:00','1990-08-05 00:00:00'),
+('61','zharber@powlowski.org','', '10','1983-12-13 00:00:00','1990-08-05 00:00:00'),
+('62','claire86@yahoo.com','', '6','1995-03-26 00:00:00','1990-08-05 00:00:00'),
+('63','josiah48@rolfson.net','', '6','2013-06-06 00:00:00','1990-08-05 00:00:00'),
+('64','beth06@tromp.com','', '4','1971-10-18 00:00:00','1990-08-05 00:00:00'),
+('65','bradford62@hauck.biz','', '4','2008-07-12 00:00:00','1990-08-05 00:00:00'),
+('66','acruickshank@gmail.com','', '5','2004-08-03 00:00:00','1990-08-05 00:00:00'),
+('67','skiles.elmo@yahoo.com','', '6','1993-05-19 00:00:00','1990-08-05 00:00:00'),
+('68','bkessler@schmidt.com','', '4','2011-05-20 00:00:00','1990-08-05 00:00:00'),
+('69','belle66@reichel.com','', '7','2017-08-05 00:00:00','1990-08-05 00:00:00'),
+('70','rhermiston@yahoo.com','', '4','1989-04-08 00:00:00','1990-08-05 00:00:00');
 
 
 insert into 
