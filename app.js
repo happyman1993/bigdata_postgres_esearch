@@ -10,11 +10,6 @@ require('dotenv').load();
 
 var app = express();
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
-
-
 var conString = process.env.DATABASE_URL;
 
 app.use(logger('dev'));
