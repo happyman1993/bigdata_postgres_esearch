@@ -1,24 +1,28 @@
 var express = require('express');
 var router = express.Router();
-let Parser = require('rss-parser');
-var request = require('request');
+// var elasticsearch = require('elasticsearch');
+// var admin_dashboard = require('../services/admin-dashboard');
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  console.log(req.body.rss_url);
-  res.send('okokok')
-});
 
-router.post('/', async(req, res, next) => {
-  console.log(req.body.rss_url);
-  let feed = await parser.parseURL(req.body.rss_url);
+const staticsController = require('../controllers').statics;
+const countryController = require('../controllers').country;
+const usersController = require('../controllers').users;
 
-  const fileUrl = feed.items[0].enclosure.url;
+require('dotenv').config();
 
-  const file = fs.readFileSync('./audio.wav');
-  const audioBytes = file.toString('base64');
-  console.log("len=" + audioBytes.length);
-  res.json({data: 'responsdfaasdse'})
-});
+
+router.get('/getOnlineUsercountPerGame', staticsController.getOnlineUsercountPerGame);
+router.get('/getUniqueLoggedUsercount', staticsController.getUniqueLoggedUsercount);
+router.get('/getPeakUsers', staticsController.getPeakUsers);
+router.get('/getOnlineHoursInGame', staticsController.getOnlineHoursInGame);
+router.get('/getRankingOfISPs', staticsController.getRankingOfISPs);
+router.get('/getListAvailableServers', staticsController.getListAvailableServers);
+router.get('/getBandwidthPerServer', staticsController.getBandwidthPerServer);
+router.get('/getNewOldExitUser', staticsController.getNewOldExitUser);
+
+router.get('/countries', countryController.getCountries);
+router.get('/getCountry/:id', countryController.getCountryById);
+
+router.get('/getuserscomputer', usersController.getUsersComputer);
 
 module.exports = router;

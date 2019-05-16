@@ -5,12 +5,22 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
 var indexRouter = require('./routes/index');
+var dbfakeRouter = require('./routes/db_fake_data');
+
 var cors = require('cors');
-require('dotenv').load();
+
+/**
+ * for test 
+ */
+var dateFormat = require('dateformat');
+var start = Date.now();
+console.log(dateFormat(start, "yyyy-mm-dd 00:00:00"));
+
+//-------------------------------------------
+
+require('dotenv').config();
 
 var app = express();
-
-var conString = process.env.DATABASE_URL;
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -21,7 +31,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors());
+
 app.use('/', indexRouter);
+
+app.use('/', dbfakeRouter);
 
 let allowCrossDomain = function(req, res, next) {
   res.header('Access-Controll-Allow-Credentials', true);
@@ -49,4 +62,9 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
+
 module.exports = app;
+const port = process.env.PORT || 9010;
+app.listen(port, function() {
+    console.log('Express API is listening on port: %s', port);
+});
