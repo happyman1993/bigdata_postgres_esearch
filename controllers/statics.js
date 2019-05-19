@@ -191,11 +191,11 @@ module.exports = {
         sql = `select ${ranking_option} as name, count(client_id) from client_info_login group by ${ranking_option}
                     ${orderby} ${limit} ${offset}`;
 
-        console.log(sql);
         try{
             const { rows, rowCount } = await global.query(sql);
             return res.status(200).send({"data":rows, "x_total_count": total_count});
         }catch(error){
+            console.log(sql);
             return res.status(400).send(error);
         }
     },
@@ -445,7 +445,6 @@ module.exports = {
                     ${orderby} ${limit} ${offset}`;
 
         try{
-            console.log(sql);
             const { rows, rowCount } = await global.query(sql);
             return res.status(200).send({"data":rows, "x_total_count": total_count});
         }catch(error){
@@ -453,4 +452,405 @@ module.exports = {
             return res.status(400).send(error);
         }
     },
+
+    
+    /**
+     * Current Ping x Old Ping (To check the improvement in % and in milliseconds that 
+     * Hydra did in each connection) with the information
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getCurrentPing(req, res, next){
+        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+
+        var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
+        // console.log(sql_total);
+        
+        var total_count = 0;
+        try{
+            const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            return res.status(400).send(error);
+        }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        sql = `select client_id, ping_with currentping, ping_without oldping, improvement
+                from (
+                    select id client_id from client_info where 0=0 ${company_id}
+                ) a
+                left join(
+                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/ping_without improvement 
+                    from public.client_info_network_day
+                ) b using(client_id)
+                ${orderby} ${limit} ${offset}`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+
+    /**
+     * Ping improvement per Country and State (To check the improvement in % and in milliseconds that 
+     * Hydra did in each connection) with the information
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getPingImprovementPerRegion(req, res, next){
+        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+
+        var region = req.query.regiontype_like ? req.query.regiontype_like:"country";
+        var sql_total = `select count(*) from (select ${region} from client_info a left join client_info_login b on a.id=b.client_id where 0=0 ${company_id} group by ${region}) k`;
+
+        
+        // console.log(sql_total);
+        
+        var total_count = 0;
+        try{
+            const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            console.log(sql_total);
+            return res.status(400).send(error);
+        }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        sql = `select avg(ping_with)::numeric::integer currentping, avg(ping_without)::numeric::integer oldping, avg(improvement)::numeric::integer improvement, ${region} region
+                from (
+                    select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where company_id=3
+                ) a
+                left join(
+                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/ping_without improvement 
+                    from public.client_info_network_day
+                ) b using(client_id)
+                group by ${region}
+                ${orderby} ${limit} ${offset}`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+    
+    /**
+     * Average packet loss per ISP, user or Country. (To check the improvement in % that Hydra did in the packet loss on each connection 
+     * or the overall average) with the information
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getAveragePacketLoss(req, res, next){
+        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+
+        var region = req.query.regiontype_like ? req.query.regiontype_like:"";
+        var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
+        if(region != "")
+            sql_total = `select count(*) from (select ${region} from client_info a left join client_info_login b on a.id=b.client_id where 0=0 ${company_id} group by ${region}) k`;
+
+
+        
+        // console.log(sql_total);
+        
+        var total_count = 0;
+        try{
+            const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            return res.status(400).send(error);
+        }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        if(region == "")
+            sql = `select client_id as region, packet_loss_with currentloss, packet_loss_without oldloss, improvement
+                from (
+                    select id client_id from client_info where 0=0 ${company_id}
+                ) a
+                left join(
+                    select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/packet_loss_without improvement 
+                    from public.client_info_network_day
+                ) b using(client_id)
+                ${orderby} ${limit} ${offset}`;
+        else
+            sql = `select avg(packet_loss_with)::numeric::integer currentloss, avg(packet_loss_without)::numeric::integer oldloss, avg(improvement)::numeric::integer improvement, ${region} region
+                from (
+                    select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where company_id=3
+                ) a
+                left join(
+                    select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/packet_loss_without improvement 
+                    from public.client_info_network_day
+                ) b using(client_id)
+                group by ${region}
+                ${orderby} ${limit} ${offset}`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+
+    
+    /**
+     * Number of users per server (How many users are online using that server)
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getOnlineUsersPerServer(req, res, next){
+        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+
+        var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
+        
+        var total_count = 0;
+        try{
+            const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            return res.status(400).send(error);
+        }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        sql = `select server_id, name servername, client_tcp+client_udp count from server_info x join server_info_machine y on x.id=y.server_id 
+                where 1=1 ${company_id}
+            ${orderby} ${limit} ${offset}`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+
+    
+    /**
+     * Number of available routes (Total number of servers available on system)
+     * Number of servers in use (Number of servers that users are connected in real time)
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getAvailableUsedServers(req, res, next){
+        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+
+        sql = `select availables, uses
+                from (
+                    select 1 id, count(*) availables from server_info x join server_info_machine y on x.id=y.server_id 
+                    where cpu>0 and memory_use>0 and memory_free>0 ${company_id}
+                ) b
+                join (
+                    select 1 id, count(*) uses 
+                    from (select client_tcp+client_udp count1 
+                            from server_info x join server_info_machine y on x.id=y.server_id where 1=1 ${company_id}) a 
+                    where a.count1>0
+                ) c using(id)`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": 1});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+
+    /**
+     * Number of users; segmented by region, Country, State and City.  
+     * (When users are from Brazil also set which region they are South, Southeast, Midwest, North, Northeast)
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getUsersSegmentedByRegion(req, res, next){
+        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
+
+        var regions = req.query.selected_regions.split(',');
+        var conditions = company_id;
+        var groupbyregion = '';
+
+        if(regions.length == 1)
+            groupbyregion = 'country';
+        else{
+            conditions += " and country='" + regions[1] + "'";
+            if(regions.length == 2){
+                if(regions[1] == 'Brazil')
+                    groupbyregion = 'region';
+                else
+                    groupbyregion = 'state';
+            }
+            else if(regions.length == 3){
+                if(regions[1] == 'Brazil'){
+                    conditions += " and region='" + regions[2] + "'";
+                    groupbyregion = 'state';
+                }
+                else{
+                    conditions += " and state='" + regions[2] + "'";
+                    groupbyregion = 'city';
+                }
+            }
+            else{
+                conditions += " and region='" + regions[2] + "'";
+                conditions += " and state='" + regions[3] + "'";
+                groupbyregion = 'city';
+            }
+        } 
+        sql = `select ${groupbyregion} regionname, count(client_id) usercount from client_info_login where 1=1 ${conditions} group by ${groupbyregion}`;
+        console.log(sql);
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": 1});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+    
+    
+    /**
+     * Internet speed of each user
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getInternetSpeedOfUser(req, res, next){
+        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+
+        var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
+        
+        var total_count = 0;
+        try{
+            const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            return res.status(400).send(error);
+        }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        sql = `select a.client_id, isp, to_char((download+upload)/1024, 'FM999999.99999') internetspeed 
+                from (select id from client_info where 1=1 ${company_id}) c 
+                left join client_info_login a on c.id=a.client_id 
+                left join client_info_network b on a.client_id=b.client_id 
+            ${orderby} ${limit} ${offset}`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+
+    
+    /**
+     * Creation of average speed connection per Country, State, City and ISP 
+     * (When users are from Brazil also set which region they are South, Southeast, Midwest, North, Northeast)
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getInetAvgSpeedPerRegion(req, res, next){
+        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
+
+
+        var conditions = "";
+        var groupbyregion = '';
+
+        if(req.query.region_type == 'isp'){
+            groupbyregion = 'isp';
+        }
+        else{
+            if(req.query.selected_regions == '')
+                groupbyregion = 'country';
+            else{
+                var regions = req.query.selected_regions.split(',');
+                conditions += " and country='" + regions[0] + "'";
+                if(regions.length == 1){
+                    if(regions[0] == 'Brazil')
+                        groupbyregion = 'region';
+                    else
+                        groupbyregion = 'state';
+                }
+                else if(regions.length == 2){
+                    if(regions[0] == 'Brazil'){
+                        conditions += " and region='" + regions[1] + "'";
+                        groupbyregion = 'state';
+                    }
+                    else{
+                        conditions += " and state='" + regions[1] + "'";
+                        groupbyregion = 'city';
+                    }
+                }
+                else{
+                    conditions += " and region='" + regions[1] + "'";
+                    conditions += " and state='" + regions[2] + "'";
+                    groupbyregion = 'city';
+                }
+            } 
+        }
+
+
+        // sql = `select ${groupbyregion} regionname, count(client_id) usercount from client_info_login where 1=1 ${conditions} group by ${groupbyregion}`;
+
+        sql = `select ${groupbyregion} regionname, to_char(avg(download)/1024, 'FM999999.99999') download, to_char(avg(upload)/1024, 'FM999999.99999') upload
+                from (select id from client_info where 1=1 ${company_id}) c 
+                inner join (select * from client_info_login where 1=1 ${conditions}) a on c.id=a.client_id 
+                left join client_info_network b on a.client_id=b.client_id 
+                group by ${groupbyregion}`;
+
+        console.log(sql);
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": 1});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+    
 }

@@ -2,8 +2,6 @@
 module.exports = (sequelize, DataTypes) => {
   const server_info_machine_log = sequelize.define('server_info_machine_log', {
     server_id: DataTypes.INTEGER,
-    client_tcp: DataTypes.INTEGER,
-    client_udp: DataTypes.INTEGER,
     download_per_second: DataTypes.INTEGER,
     upload_per_second: DataTypes.INTEGER,
     total_download: DataTypes.INTEGER,

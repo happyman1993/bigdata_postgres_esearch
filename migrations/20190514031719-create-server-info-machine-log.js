@@ -11,12 +11,6 @@ module.exports = {
       server_id: {
         type: Sequelize.INTEGER
       },
-      client_tcp: {
-        type: Sequelize.INTEGER
-      },
-      client_udp: {
-        type: Sequelize.INTEGER
-      },
       download_per_second: {
         type: Sequelize.INTEGER
       },
