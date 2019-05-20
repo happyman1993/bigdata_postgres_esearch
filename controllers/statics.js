@@ -929,8 +929,8 @@ module.exports = {
                 from (select id server_id, name servername from server_info where 1=1 ${company_id}) a
                 join (
                     select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/avg(packet_count) loss_pro 
-                    where client_id in (select id from client_info where 1=1 ${company_id})
                     from client_info_network_day group by server_id
+                    where client_id in (select id from client_info where 1=1 ${company_id})
                 ) b using(server_id)
 
             ${orderby} ${limit} ${offset}`;
