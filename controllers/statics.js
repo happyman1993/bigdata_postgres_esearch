@@ -853,4 +853,146 @@ module.exports = {
         }
     },
     
+    /**
+     * List servers timeouts between server x customers, and show statics from it, 
+     * from the server who lose more packet to one who lose less, show that on % and on packet numbers counts by time
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getPacketLossStaticSXC(req, res, next){
+        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+
+        var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
+        
+        var total_count = 0;
+        try{
+            const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            return res.status(400).send(error);
+        }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        sql = `select servername, server_id, packet_loss::INTEGER , loss_pro::INTEGER 
+                from (select id server_id, name servername from server_info where 1=1 ${company_id}) a
+                join (
+                    select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/avg(packet_count) loss_pro 
+                    from client_info_network_day group by server_id
+                ) b using(server_id)
+
+            ${orderby} ${limit} ${offset}`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+
+    /**
+     * List servers timeouts between server x server, and show statics from it, 
+     * from the server who lose more packet to one who lose less, show that on % and on packet numbers counts by time
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getPacketLossStaticSXS(req, res, next){
+        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+
+        var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
+        
+        var total_count = 0;
+        try{
+            const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            return res.status(400).send(error);
+        }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        sql = `select servername, packet_loss::INTEGER , loss_pro::INTEGER 
+                from (select id server_id, name servername from server_info where 1=1 ${company_id}) a
+                join (
+                    select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/avg(packet_count) loss_pro 
+                    where client_id in (select id from client_info where 1=1 ${company_id})
+                    from client_info_network_day group by server_id
+                ) b using(server_id)
+
+            ${orderby} ${limit} ${offset}`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+
+    
+    /**
+     * Alert whenever a server goes offline for more than 3 seconds, 
+     * whenever a server reaches more than 80%+ CPU ram, whenever the server has more than 10%+
+     * from the server who lose more packet to one who lose less, show that on % and on packet numbers counts by time
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getServerOffline(req, res, next){
+        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+
+        var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
+        
+        var total_count = 0;
+        try{
+            const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            return res.status(400).send(error);
+        }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        sql = `select servername, loss_pro::INTEGER, cpu, ram::INTEGER
+                from (select id server_id, name servername from server_info where 1=1 ${company_id}) a
+                join (
+                    select server_id, cpu, ((memory_use*100) / (memory_free+memory_use)) ram from server_info_machine
+                ) c using(server_id)
+                join (
+                    select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/avg(packet_count) loss_pro 
+                    from client_info_network_day
+                    where client_id in (select id from client_info where 1=1 ${company_id})
+                    group by server_id
+                ) b using(server_id)
+
+            ${orderby} ${limit} ${offset}`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
 }

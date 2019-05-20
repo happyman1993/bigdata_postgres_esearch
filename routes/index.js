@@ -29,7 +29,9 @@ router.get('/getAvailableUsedServers', staticsController.getAvailableUsedServers
 
 router.get('/getInternetSpeedOfUser', staticsController.getInternetSpeedOfUser);
 router.get('/getInetAvgSpeedPerRegion', staticsController.getInetAvgSpeedPerRegion);
-
+router.get('/getPacketLossStaticSXC', staticsController.getPacketLossStaticSXC);
+router.get('/getPacketLossStaticSXS', staticsController.getPacketLossStaticSXS);
+router.get('/getServerOffline', staticsController.getServerOffline);
 
 router.get('/getuserscomputer', usersController.getUsersComputer);
 

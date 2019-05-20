@@ -140,6 +140,7 @@ CREATE TABLE public.client_info_network_day (
 	packet_loss_with int4 NULL,
 	jitter_with int4 NULL,
 	jitter_without int4 NULL,
+	packet_count int4 0,
 	CONSTRAINT client_info_network_day_pk PRIMARY KEY (id),
 	CONSTRAINT client_info_network_day_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id),
 	CONSTRAINT client_info_network_day_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
