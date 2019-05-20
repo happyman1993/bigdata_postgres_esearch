@@ -62,12 +62,12 @@ router.post('/makerandom_pg', async(req, res, next) => {
   var state = ['aaaa', 'bbbbbb', 'ccccc', 'dddddd', 'eeeeeee','ffffffff','gggggggg','eeeeee','hhhhhhh', 'iiiiiiii','jjjjjjjj'];
   var city = ['xxxxxx', 'zzzzzz', 'yyyyyy', 'uuuuuu','kkkkkk','mmmmmm','nnnnnnn','lllllll','ooooooo','ppppppp'];
   var isp = ['isp1', 'isp2', 'isp3', 'isp4', 'isp5', 'isp6', 'isp7', 'isp8', 'isp9', 'isp10', 'isp11', 'isp12', 'isp13'];
-  for(var k=1; k<20; k++){
+  for(var k=1; k<2; k++){
     var sql = '';//`insert into public.client_info_login(id, client_id, ip, last_login, region, country, city, isp, state) `;
-    for(var i = 0; i<1000; i++){
+    for(var i = 0; i<10; i++){
       for(var j=0; j<6; j++){
         sql += `insert into public.client_info_login(id, client_id, ip, last_login, region, country, city, isp, state)
-         values(${1+k*6000+i*6+j}, ${Math.floor(Math.random() * 45)+21}, '127.0.0.${Math.floor(Math.random() * 254)}', NOW(), 'aaa',
+         values(${1+k*60+i*6+j}, ${Math.floor(Math.random() * 45)+21}, '127.0.0.${Math.floor(Math.random() * 254)}', NOW(), 'aaa',
           '${country[Math.floor(Math.random() * 6)]}', '${city[Math.floor(Math.random() * 10)]}','${isp[Math.floor(Math.random() * 13)]}',
           '${state[Math.floor(Math.random() * 11)]}');`;
 
