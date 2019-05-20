@@ -5,7 +5,7 @@ var router = express.Router();
 
 
 const staticsController = require('../controllers').statics;
-const countryController = require('../controllers').country;
+// const countryController = require('../controllers').country;
 const usersController = require('../controllers').users;
 
 require('dotenv').config();
@@ -36,7 +36,7 @@ router.get('/getServerOffline', staticsController.getServerOffline);
 router.get('/getuserscomputer', usersController.getUsersComputer);
 
 
-router.get('/countries', countryController.getCountries);
-router.get('/getCountry/:id', countryController.getCountryById);
+// router.get('/countries', countryController.getCountries);
+// router.get('/getCountry/:id', countryController.getCountryById);
 
 module.exports = router;

@@ -213,6 +213,20 @@ CREATE TABLE public.server_info_machine (
 );
 CREATE UNIQUE INDEX server_info_machine_id_idx ON public.server_info_machine USING btree (id);
 
+CREATE TABLE public.server_info_machine_logs (
+	id serial NOT NULL,
+	server_id int4 NOT NULL,
+	download_per_second int4 NULL,
+	upload_per_second int4 NULL,
+	total_download int4 NULL,
+	total_upload int4 NULL,
+	createdAt timestamp NULL,
+	updatedAt timestamp NULL,
+	CONSTRAINT server_info_machine_logs_pk PRIMARY KEY (id),
+	CONSTRAINT server_info_machine_logs_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
+);
+CREATE UNIQUE INDEX server_info_machine_logs_id_idx ON public.server_info_machine_logs USING btree (id);
+
 
 
 INSERT INTO

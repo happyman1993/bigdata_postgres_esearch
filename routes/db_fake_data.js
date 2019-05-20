@@ -7,9 +7,9 @@ var moment = require('moment');
 var jsonFile = require('jsonfile')
 var global = require('../services/global')
 
-const Country = require('../models').country;
-const State = require('../models').state;
-const City = require('../models').city;
+// const Country = require('../models').country;
+// const State = require('../models').state;
+// const City = require('../models').city;
 
 require('dotenv').config();
 
