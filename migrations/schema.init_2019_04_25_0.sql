@@ -141,6 +141,7 @@ CREATE TABLE public.client_info_network_day (
 	jitter_with int4 NULL,
 	jitter_without int4 NULL,
 	packet_count int4 NULL,
+	updated_time timestamp NULL,
 	CONSTRAINT client_info_network_day_pk PRIMARY KEY (id),
 	CONSTRAINT client_info_network_day_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id),
 	CONSTRAINT client_info_network_day_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
@@ -157,7 +158,7 @@ CREATE TABLE public.client_info_server_network (
 	CONSTRAINT client_info_server_network_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id),
 	CONSTRAINT client_info_server_network_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
 );
-CREATE INDEX client_info_server_network_client_id_idx ON public.client_info_server_network USING btree (client_id, server_id);
+CREATE INDEX client_info_server_network_client_id_idx ON public.client_info_server_network USING btree (id, client_id, server_id);
 
 CREATE TABLE public.game_info_network_day (
 	id serial NOT NULL,

@@ -10,6 +10,8 @@ const usersController = require('../controllers').users;
 
 require('dotenv').config();
 
+router.get('/getDashboardStatics', staticsController.getDashboardStatics);
+router.get('/getUniqueUsersPerTime', staticsController.getUniqueUsersPerTime);
 
 router.get('/getOnlineUsercountPerGame', staticsController.getOnlineUsercountPerGame);
 router.get('/getUniqueLoggedUsercount', staticsController.getUniqueLoggedUsercount);
@@ -32,6 +34,10 @@ router.get('/getInetAvgSpeedPerRegion', staticsController.getInetAvgSpeedPerRegi
 router.get('/getPacketLossStaticSXC', staticsController.getPacketLossStaticSXC);
 router.get('/getPacketLossStaticSXS', staticsController.getPacketLossStaticSXS);
 router.get('/getServerOffline', staticsController.getServerOffline);
+
+router.get('/getAverageLoginTime', staticsController.getAverageLoginTime);
+router.get('/getHistoryUptime', staticsController.getHistoryUptime);
+router.get('/getServerOfflineTime', staticsController.getServerOfflineTime);
 
 router.get('/getuserscomputer', usersController.getUsersComputer);
 

@@ -7,16 +7,29 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 
+
 module.exports.query = function(text, params){
-  return new Promise((resolve, reject) => {
-    pool.query(text, params)
-    .then((res) => {
-      resolve(res);
+  return new Promise((resolve, reject) => 
+  {
+    pool.connect((err, client, release) => {
+      if (err) {
+        console.error('Error acquiring client', err.stack)
+        reject(err)
+      }
+      if(client == null)
+      {
+        
+      }
+      client.query(text, (err, result) => {
+        release()
+        if (err) {
+          console.error('Error executing query', err.stack)
+          reject(err);
+        }
+        resolve(result);
+      })
     })
-    .catch((err) => {
-      console.log(err);
-      reject(err);
-    })
+    
   })
 };
 
@@ -24,25 +37,25 @@ exports.client = new elasticsearch.Client({
   hosts: ['http://localhost:9200']
 });
 
-exports.client.ping({
-  requestTimeout: 10000
-}, function(error){
-  if (error) {
-    console.error('Elasticsearch cluster is down!');
-  } else {
-      console.log('Everything is ok');
-    //   client.indices.create({  
-    //     index: 'client_info_login'
-    //   },function(err,resp,status) {
-    //     if(err) {
-    //       console.log(err);
-    //     }
-    //     else {
-    //       console.log("create",resp);
-    //     }
-    //   });
-  }
-})
+// exports.client.ping({
+//   requestTimeout: 10000
+// }, function(error){
+//   if (error) {
+//     console.error('Elasticsearch cluster is down!');
+//   } else {
+//       console.log('Everything is ok');
+//     //   client.indices.create({  
+//     //     index: 'client_info_login'
+//     //   },function(err,resp,status) {
+//     //     if(err) {
+//     //       console.log(err);
+//     //     }
+//     //     else {
+//     //       console.log("create",resp);
+//     //     }
+//     //   });
+//   }
+// })
 
 
 module.exports.getPaginationInfos = function (req, total_count){
