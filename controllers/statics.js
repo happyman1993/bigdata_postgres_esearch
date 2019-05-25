@@ -983,14 +983,14 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select servername, server_id, packet_loss::INTEGER , loss_pro::INTEGER 
+        sql = `select servername, server_id, coalesce(packet_loss::INTEGER,0) packet_loss , coalesce(loss_pro::INTEGER, 0) loss_pro
                 from (select id server_id, name servername from server_info where 1=1 ${company_id}) a
-                join (
+                left join (
                     select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/avg(packet_count) loss_pro 
                     from client_info_network_day group by server_id
                 ) b using(server_id)
 
-            ${orderby} ${limit} ${offset}`;
+             ${orderby} ${limit} ${offset}`;
 
         try{
             const { rows, rowCount } = await global.query(sql);
@@ -1028,16 +1028,16 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select servername, packet_loss::INTEGER , loss_pro::INTEGER 
-                from (select id server_id, name servername from server_info where 1=1 ${company_id}) a
-                join (
-                    select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/avg(packet_count) loss_pro 
-                    from client_info_network_day
-                    where client_id in (select id from client_info where 1=1 ${company_id})
-                    group by server_id
-                ) b using(server_id)
-
-            ${orderby} ${limit} ${offset}`;
+        sql = `select servername, coalesce(packet_loss::INTEGER,0) packet_loss , coalesce(loss_pro::INTEGER, 0) loss_pro
+                from (select id server_id_src , name servername from server_info where 1=1 ${company_id}) a
+                left join (
+                    select server_id_src, sum(packet_loss) packet_loss, avg(packet_loss)*100/avg(packet_count) loss_pro 
+                    from server_info_network_day
+                    where server_id_dest in (select id from server_info where 1=1 ${company_id}) 
+                        and server_id_src in (select id from server_info where 1=1 ${company_id})
+                    group by server_id_src
+                ) b using(server_id_src)
+                ${orderby} ${limit} ${offset}`;
 
         try{
             const { rows, rowCount } = await global.query(sql);
@@ -1216,11 +1216,25 @@ module.exports = {
             }
         }
 
-        sql = `select server_id, ip, isp, offline_time
-                from 
-                    (select server_id, count(id)*5 offline_time 
-                        from client_info_network_day where updated_time>${duration} group by server_id) a 
-                left join server_info b on a.server_id=b.id where 1=1 ${company_id}`;
+        sql = `select server_id, ip, isp, coalesce(offline_time_uxs, 0) offline_time_uxs , coalesce(offline_time_sxs, 0) offline_time_sxs
+                from (
+                        select id server_id, ip, isp from server_info where 1=1 ${company_id}
+                    ) a
+                left join 
+                    (select server_id, count(id)*5 offline_time_uxs
+                        from client_info_network_day 
+                        where updated_time>${duration}
+                                and server_id in (select id from server_info where 1=1 ${company_id})
+                        group by server_id
+                    ) b using(server_id) 
+                left join 
+                    (select server_id_src server_id, count(id) offline_time_sxs
+                        from server_info_network_day 
+                        where updated_time>${duration} 
+                                and server_id_src in (select id from server_info where 1=1 ${company_id})
+                        group by server_id_src
+                    ) c using(server_id) 
+                `;
         try{
             const { rows, rowCount } = await global.query(sql);
             return res.status(200).send({"data":rows, "x_total_count": rowCount});
