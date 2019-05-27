@@ -384,8 +384,8 @@ module.exports = {
                         FROM (
                         SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY daily_bandwidth desc) AS r, t.*
                         FROM
-                            (select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('DAY', a."updatedAt") monthly_dt 
-                                        from server_info_machine_logs a where a."updatedAt">=(current_date - interval '2 day') group by server_id, date_trunc('DAY', a."updatedAt")) t) x
+                            (select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('DAY', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a where a."updatedat">=(current_date - interval '2 day') group by server_id, date_trunc('DAY', a."updatedat")) t) x
                         WHERE x.r = 1
                         
                         union all
@@ -395,8 +395,8 @@ module.exports = {
                         FROM (
                         SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY daily_bandwidth desc) AS r, t.*
                         FROM
-                            (select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('DAY', a."updatedAt") monthly_dt 
-                                        from server_info_machine_logs a where a."updatedAt">=(current_date - interval '2 day') group by server_id, date_trunc('DAY', a."updatedAt")) t) x
+                            (select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('DAY', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a where a."updatedat">=(current_date - interval '2 day') group by server_id, date_trunc('DAY', a."updatedat")) t) x
                         WHERE x.r = 2
                     ) s
                     group by server_id
@@ -409,8 +409,8 @@ module.exports = {
                         FROM (
                         SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY monthly_bandwidth desc) AS r, t.*
                         FROM
-                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedAt") monthly_dt 
-                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedAt")) t) x
+                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedat")) t) x
                         WHERE x.r = 1
                         
                         union all
@@ -420,8 +420,8 @@ module.exports = {
                         FROM (
                         SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY monthly_bandwidth desc) AS r, t.*
                         FROM
-                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedAt") monthly_dt 
-                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedAt")) t) x
+                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedat")) t) x
                         WHERE x.r = 2
                     ) d
                     group by server_id
@@ -434,8 +434,8 @@ module.exports = {
                         FROM (
                         SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY monthly_bandwidth desc) AS r, t.*
                         FROM
-                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedAt") monthly_dt 
-                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedAt")) t) x
+                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedat")) t) x
                         WHERE x.r = 1
                         
                         union all
@@ -445,8 +445,8 @@ module.exports = {
                         FROM (
                         SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY monthly_bandwidth desc) AS r, t.*
                         FROM
-                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedAt") monthly_dt 
-                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedAt")) t) x
+                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedat")) t) x
                         WHERE x.r = 3
                     ) d
                     group by server_id
@@ -458,10 +458,10 @@ module.exports = {
                         FROM (
                         SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY daily_bandwidth desc) AS r, t.*
                         from (
-                            select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('week', a."updatedAt") monthly_dt 
+                            select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('week', a."updatedat") monthly_dt 
                                 from server_info_machine_logs a 
-                                where a."updatedAt" BETWEEN current_date-EXTRACT(DOW FROM NOW())::INTEGER-18 AND current_date-EXTRACT(DOW from NOW())::INTEGER
-                                group by server_id, date_trunc('week', a."updatedAt")) t
+                                where a."updatedat" BETWEEN current_date-EXTRACT(DOW FROM NOW())::INTEGER-18 AND current_date-EXTRACT(DOW from NOW())::INTEGER
+                                group by server_id, date_trunc('week', a."updatedat")) t
                         ) x
                         WHERE x.r = 1
                         
@@ -471,10 +471,10 @@ module.exports = {
                         FROM (
                         SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY daily_bandwidth desc) AS r, t.*
                         from (
-                            select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('week', a."updatedAt") monthly_dt 
+                            select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('week', a."updatedat") monthly_dt 
                                 from server_info_machine_logs a 
-                                where a."updatedAt" BETWEEN current_date-EXTRACT(DOW FROM NOW())::INTEGER-18 AND current_date-EXTRACT(DOW from NOW())::INTEGER
-                                group by server_id, date_trunc('week', a."updatedAt")) t
+                                where a."updatedat" BETWEEN current_date-EXTRACT(DOW FROM NOW())::INTEGER-18 AND current_date-EXTRACT(DOW from NOW())::INTEGER
+                                group by server_id, date_trunc('week', a."updatedat")) t
                         ) x
                         WHERE x.r = 2
                     ) s
