@@ -21,7 +21,7 @@ module.exports = {
                         ) a
                         join (
                             select 1 id, count(client_id) as peak_users_online 
-                                from public.client_game_info a where (a.updated_at >= (current_date - interval '1000 day'))
+                                from public.client_game_info a where (a.update_at >= (current_date - interval '1000 day'))
                                 and client_id in (select id from client_info where 1=1 ${company_id})
                         ) b using(id)
                         join (
