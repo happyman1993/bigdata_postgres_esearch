@@ -6,7 +6,6 @@ var router = express.Router();
 
 const staticsController = require('../controllers').statics;
 // const countryController = require('../controllers').country;
-const usersController = require('../controllers').users;
 
 require('dotenv').config();
 
@@ -39,8 +38,7 @@ router.get('/getAverageLoginTime', staticsController.getAverageLoginTime);
 router.get('/getHistoryUptime', staticsController.getHistoryUptime);
 router.get('/getServerOfflineTime', staticsController.getServerOfflineTime);
 
-router.get('/getuserscomputer', usersController.getUsersComputer);
-
+router.get('/getuserscomputer', staticsController.getUsersComputer);
 
 // router.get('/countries', countryController.getCountries);
 // router.get('/getCountry/:id', countryController.getCountryById);

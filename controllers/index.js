@@ -1,6 +1,8 @@
 const statics = require('./statics');
-const users = require('./users');
+const user = require('./user');
+const company = require('./company');
 module.exports = {
     statics,
-    users
+    user,
+    company
 };

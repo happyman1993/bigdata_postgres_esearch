@@ -240,20 +240,41 @@ CREATE TABLE public.server_info_network_day (
 );
 CREATE INDEX server_info_network_day_id_idx ON public.server_info_network_day USING btree (id, server_id_src, server_id_dest);
 
+CREATE TABLE public.users (
+	id serial NOT NULL,
+	email varchar(100) NOT NULL,
+	"password" varchar(255) NOT NULL,
+	user_role varchar(500) NOT NULL DEFAULT '1',
+	server_ids varchar NOT NULL DEFAULT '1',
+	game_ids varchar NOT NULL DEFAULT '1',
+	company_id int4 NULL,
+	create_at timestamp NULL,
+	last_update timestamp NULL,
+);
+CREATE INDEX users_id_idx ON public.users USING btree (id);
+
+-- CREATE TABLE public.monitor_server_game (
+-- 	id serial NOT NULL,
+-- 	user_id uuid NOT NULL,
+-- 	server_game_id int4 NOT NULL,
+-- 	"type" int4 NULL,
+-- );
+-- CREATE INDEX monitor_server_game_id_idx ON public.monitor_server_game USING btree (id);
+
 
 INSERT INTO
-	public.company_info
+	public.company_info("name", create_at, email)
 VALUES
-(1, 'aaa','2012-03-24 00:00:00.000','dickens.aliya@hotmail.com'),
-(2, 'bbb','2016-12-07 00:00:00.000','jenkins.gisselle@hotmail.com'),
-(3, 'ccc','2015-08-09 00:00:00.000','skemmer@cormier.com'),
-(4,'ddd','2014-08-29 00:00:00.000','schmitt.leann@marquardt.com'),
-(5,'eee','2014-05-17 00:00:00.000','adriana92@yahoo.com'),
-(6,'fff','2014-11-25 00:00:00.000','zharber@powlowski.org'),
-(7,'ggg','2009-05-24 00:00:00.000','claire86@yahoo.com'),
-(8,'hhh','2009-05-24 00:00:00.000','josiah48@rolfson.net'),
-(9,'iii','2009-05-24 00:00:00.000','beth06@tromp.com'),
-(10,'jjj','2009-05-24 00:00:00.000','bradford62@hauck.biz');
+('aaa','2012-03-24 00:00:00.000','dickens.aliya@hotmail.com'),
+('bbb','2016-12-07 00:00:00.000','jenkins.gisselle@hotmail.com'),
+('ccc','2015-08-09 00:00:00.000','skemmer@cormier.com'),
+('ddd','2014-08-29 00:00:00.000','schmitt.leann@marquardt.com'),
+('eee','2014-05-17 00:00:00.000','adriana92@yahoo.com'),
+('fff','2014-11-25 00:00:00.000','zharber@powlowski.org'),
+('ggg','2009-05-24 00:00:00.000','claire86@yahoo.com'),
+('hhh','2009-05-24 00:00:00.000','josiah48@rolfson.net'),
+('iii','2009-05-24 00:00:00.000','beth06@tromp.com'),
+('jjj','2009-05-24 00:00:00.000','bradford62@hauck.biz');
 
 INSERT into
 	public.client_info

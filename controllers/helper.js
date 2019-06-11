@@ -1,14 +1,15 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+var bcrypt = require('bcrypt');
+var jwt = require('jsonwebtoken');
 
-const Helper = {
+module.exports = {
   /**
    * Hash Password Method
    * @param {string} password
    * @returns {string} returns hashed password
    */
   hashPassword(password) {
-    return bcrypt.hashSync(password, bcrypt.genSaltSync(8))
+    return password;
+    // return bcrypt.hashSync(password, bcrypt.genSaltSync(8))
   },
   /**
    * comparePassword
@@ -17,7 +18,8 @@ const Helper = {
    * @returns {Boolean} return True or False
    */
   comparePassword(hashPassword, password) {
-    return bcrypt.compareSync(password, hashPassword);
+    return hashPassword==password;
+    // return bcrypt.compareSync(password, hashPassword);
   },
   /**
    * isValidEmail helper method
@@ -42,4 +44,4 @@ const Helper = {
   }
 }
 
-export default Helper;
+// export default Helper;
