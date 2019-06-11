@@ -1,9 +1,9 @@
 var express = require('express');
 var router = express.Router();
 
-var Reflection = require('../controllers/Reflection');
+var Reflection = require('../controllers/reflection');
 var UserWithDb = require('../controllers/user');
-var Auth = require('../middleware/Auth');
+var Auth = require('../middleware/auth');
 
 router.post('/reflections', Auth.verifyToken, Reflection.create);
 router.get('/reflections', Auth.verifyToken, Reflection.getAll);

@@ -1,6 +1,6 @@
 var moment = require('moment');
 var uuidv4 = require('uuid/v4');
-var Helper = require('./Helper');
+var Helper = require('./helper');
 
 var global = require("../services/global");
 require('dotenv').config();

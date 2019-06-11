@@ -17,7 +17,7 @@ module.exports = {
         var sql_total = `select total_users_online, peak_users_online, unique_users, total_servers_online, total_servers_offline, packet_loss_improvement::integer, ping_improvement::integer
                         from (
                             select 1 id, count(*) as total_users_online from client_info where 
-                            (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))/1000<30000000 ${company_id}
+                            (EXTRACT(EPOCH FROM (now()::timestamp - updated_at::timestamp)))/1000<30000000 ${company_id}
                         ) a
                         join (
                             select 1 id, count(client_id) as peak_users_online 
