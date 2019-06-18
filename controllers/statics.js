@@ -285,7 +285,7 @@ module.exports = {
         }catch(error){
             return res.status(400).send(error);
         }
-    
+
         page_no = parseInt(req.query._page, 10);
         var limit = "limit " + req.query._limit;
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
@@ -1048,60 +1048,6 @@ module.exports = {
         }
     },
 
-    
-    // /**
-    //  * Alert whenever a server goes offline for more than 3 seconds, 
-    //  * whenever a server reaches more than 80%+ CPU ram, whenever the server has more than 10%+
-    //  * from the server who lose more packet to one who lose less, show that on % and on packet numbers counts by time
-    //  * 
-    //  * @param {*} req 
-    //  * @param {*} res 
-    //  * @param {*} next 
-    //  */
-    // async getServerOffline(req, res, next){
-    //     var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
-
-    //     var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
-        
-    //     var total_count = 0;
-    //     try{
-    //         const { rows, rowCount } = await global.query(sql_total);
-    //     if(rowCount>0)
-    //         total_count = rows[0]['count'];
-    //     }catch(error){
-    //         return res.status(400).send(error);
-    //     }
-
-    //     page_no = parseInt(req.query._page, 10);
-    //     var limit = "limit " + req.query._limit;
-    //     var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
-    //     var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
-
-    //     sql = `select servername, loss_pro::INTEGER, cpu, ram::INTEGER
-    //             from (select id server_id, name servername from server_info where 1=1 ${company_id}) a
-    //             join (
-    //                 select server_id, cpu, ((memory_use*100) / (memory_free+memory_use)) ram from server_info_machine
-    //             ) c using(server_id)
-    //             join (
-    //                 select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/avg(packet_count) loss_pro 
-    //                 from client_info_network_day
-    //                 where client_id in (select id from client_info where 1=1 ${company_id})
-    //                 group by server_id
-    //             ) b using(server_id)
-
-    //         ${orderby} ${limit} ${offset}`;
-
-    //     try{
-    //         const { rows, rowCount } = await global.query(sql);
-    //         return res.status(200).send({"data":rows, "x_total_count": total_count});
-    //     }catch(error){
-    //         console.log(sql);
-    //         return res.status(400).send(error);
-    //     }
-    // },
-
-
-        
     /**
      * Alert whenever a server goes offline for more than 3 seconds, 
      * whenever a server reaches more than 80%+ CPU ram, whenever the server has more than 10%+
@@ -1133,7 +1079,42 @@ module.exports = {
         }
     },
 
+    /**
+     * -Create a configurable alert (number of clients affected at the same time for alert issuance) to alert whenever this number of clients 
+     * (that the admin has set themselves) to disconnect or increase in packet loss, cross-location, similarities between the users, the ISP, 
+     * and city to see how far the problem has reached, which region is affected and which ISPs, thinking on that 
+     * will be possible even to trace when a city lose electric energy for example, or a hurricane starts etc...
+     * in the table client_info_network_day you can make this information, relating to the cliend_id and taking the user's ip and checking the ISP
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getConfigurableAlert(req, res, next){
+        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
+        var ranking_option = req.query.option_like ? req.query.option_like : "isp";
+        var type = req.query.type;
+
+        sql = `select name, cpu, ram::integer, packetloss::integer
+                from (
+                    select server_id, name, cpu, memory_use*100/(memory_free+memory_use) ram 
+                    from server_info a join server_info_machine b on a.id = b.server_id where 1=1 ${company_id}
+                ) b
+                left join (
+                    select server_id, avg(packet_loss_with*100/packet_count) packetloss from client_info_network_day 
+                    where server_id in (select id from server_info where 1=1 ${company_id}) group by server_id
+                ) c using(server_id)`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": rowCount});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
     
+
     /**
      * At what time of day the user log in; profiling of paying users to do events when most of the paying users are online, etc… 
      * Calculate the peak of logins by verifying those times
@@ -1223,7 +1204,7 @@ module.exports = {
                 left join 
                     (select server_id, count(id)*5 offline_time_uxs
                         from client_info_network_day 
-                        where updated_time>${duration}
+                        where updated_at>${duration}
                                 and server_id in (select id from server_info where 1=1 ${company_id})
                         group by server_id
                     ) b using(server_id) 

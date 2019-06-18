@@ -84,24 +84,6 @@ CREATE TABLE public.client_info_day (
 );
 CREATE INDEX client_info_day_id_idx ON public.client_info_day USING btree (id, client_id, game_id);
 
-CREATE TABLE public.client_info_hardware (
-	id int4 NOT NULL,
-	client_id int4 NOT NULL,
-	motherboard varchar(255) NULL,
-	chipset varchar(255) NULL,
-	memory_ram varchar(255) NULL,
-	memory varchar(255) NULL,
-	graphics_card varchar(255) NULL,
-	network_card varchar(255) NULL,
-	ssd varchar(255) NULL,
-	mouse varchar(255) NULL,
-	keyboard varchar(255) NULL,
-	headset varchar(255) NULL,
-	CONSTRAINT client_info_hardware_pk PRIMARY KEY (id),
-	CONSTRAINT client_info_hardware_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id)
-);
-CREATE INDEX client_info_hardware_id_idx ON public.client_info_hardware USING btree (id, client_id);
-
 CREATE TABLE public.client_info_login (
 	id int4 NOT NULL,
 	client_id int4 NOT NULL,
@@ -141,7 +123,7 @@ CREATE TABLE public.client_info_network_day (
 	jitter_with int4 NULL,
 	jitter_without int4 NULL,
 	packet_count int4 NULL,
-	updated_time timestamp NULL,
+	updated_at timestamp NULL,
 	CONSTRAINT client_info_network_day_pk PRIMARY KEY (id),
 	CONSTRAINT client_info_network_day_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id),
 	CONSTRAINT client_info_network_day_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
@@ -182,7 +164,7 @@ CREATE TABLE public.game_info_server (
 	ip varchar(255) NULL,
 	port int4 NULL,
 	protocol varchar(5) NULL,
-	update_at timestamp NULL,
+	created_at timestamp NULL,
 	CONSTRAINT game_info_server_pk PRIMARY KEY (id),
 	CONSTRAINT game_info_server_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id),
 	CONSTRAINT game_info_server_process_info_fk FOREIGN KEY (process_id) REFERENCES process_info(id)
@@ -877,62 +859,6 @@ values
 ('48','25','57.7','88.2','713','346','1972-02-03 00:00:00'),
 ('49','26','76.2','69.6','967','967','1988-02-27 00:00:00'),
 ('50','28','62.3','36.6','859','662','1994-08-09 00:00:00');
-
-
-insert into 
-	public.client_info_hardware
-values
-('1','21','BROOKDALE','430LX','G.SKILL Ripjaws X Series','2GB','RX 560','Fast Internet','Kingston 120gb)','MO270 Multilaser','C3 Tech','Dell AE2'),
-('2','52','D845GVAD2','440FX','G.SKILL Ripjaws X Series','8GB','GTX1050ti','TP-link PCI','Kingdian 240gb)','Logitech Gamer 0472','Warrior TC210','Apple - AirPods'),
-('3','53','D875PBZ','440LX','G.Skill Trident Z Series','8GB','RX 560','Fast Internet','Kingdian 240gb)','Redragon 1000DPI','C3 Tech','Logitech PRO'),
-('4','54','D865GRH','440BX','PNY Anarchy Series','2GB','RX 580','PCI-Express','Kingston 120gb)','Deathadder Essential','Hardline Keyboard','Logitech PRO'),
-('5','55','D845GRG','430FX','G.Skill Trident Z Series','8GB','GTX1050','TP-link','Kingston 120gb)','Thane Warrior 4000','HyperX Mars','Astro 10'),
-('6','56','D845BG','440LX','PNY Anarchy Series','4GB','RX 560','TP-link','Kingston 120gb)','Redragon 1000DPI','Kumara Switch','Dell AE2'),
-('7','57','D845GBV','430TX','G.SKILL Ripjaws X Series','8GB','RX 580','Fast Internet','Samgporse 120gb)','Thane Warrior 4000','Hardline Keyboard','Logitech PRO'),
-('8','58','D845GLAD','430VX','G.SKILL Ripjaws X Series','8GB','RX 580','TP-link PCI','Kingston 120gb)','MO270 Multilaser','Hardline Keyboard','Dell AE2'),
-('9','59','D845PT','440FX','Corsair Dominator','8GB','GTX1050ti','TP-link','Kingston 120gb)','Thane Warrior 4000','Fortrek Gamer','Logitech PRO'),
-('10','60','D845GLAD','440LX','G.Skill Trident Z Series','4GB','RX 580','TP-link PCI','Kingston 120gb)','Deathadder Essential','Hardline Keyboard','Dell AE2'),
-('11','61','D845BG','430VX','Ballistix Tactical Series','8GB','GTX1050ti','TP-link','Kingston 120gb)','Thane Warrior 4000','Kumara Switch','Jabra Evolve'),
-('12','62','D845PEBT2','430NX','G.Skill Trident Z Series','2GB','GTX1050ti','PCI-Express','Kingdian 240gb)','Deathadder Essential','Hardline Keyboard','Apple - AirPods'),
-('13','63','D845EPT2','430MX','Corsair Dominator','2GB','GTX1070','TP-link PCI','Kingdian 240gb)','Thane Warrior 4000','HyperX Mars','Dell PRO UC350'),
-('14','64','BROOKDALE','430FX','Ballistix Tactical Series','4GB','RX 580','PCI Realtek','Kingston 120gb)','Logitech Gamer 0472','Kumara Switch','Astro 10'),
-('15','65','D845GERG2','440LX','G.SKILL Ripjaws X Series','8GB','RX 580','TP-link PCI','Kingdian 240gb)','MO270 Multilaser','Fortrek Gamer','Dell PRO UC350'),
-('16','66','D865GRH','430TX','Ballistix Tactical Series','8GB','RX 580','TP-link','Samgporse 120gb)','MO270 Multilaser','Hardline Keyboard','Dell PRO UC350'),
-('17','67','D845GEBV2','430LX','Ballistix Tactical Series','4GB','RX 580','TP-link PCI','Kingston 120gb)','Redragon 1000DPI','Warrior TC210','Apple - AirPods'),
-('18','68','D845EBG2','430NX','PNY Anarchy Series','8GB','GTX1070','TP-link','Kingdian 240gb)','Thane Warrior 4000','Hardline Keyboard','Apple - AirPods'),
-('19','69','D845GLAD','430HX','G.Skill Trident Z Series','8GB','GTX2070','TP-link PCI','Kingston 120gb)','Deathadder Essential','Hardline Keyboard','Astro 10'),
-('20','70','D865-GLC','430VX','G.SKILL Ripjaws X Series','2GB','GTX1060','TP-link','Kingston 120gb)','Thane Warrior 4000','HyperX Mars','Apple - AirPods'),
-('21','51','BROOKDALE','430LX','G.Skill Trident Z Series','2GB','GTX1070','Fast Internet','Kingston 120gb)','Redragon 1000DPI','HyperX Mars','Apple - AirPods'),
-('22','22','D865GRH','430TX','PNY Anarchy Series','4GB','GTX1060','PCI Realtek','Samgporse 120gb)','Deathadder Essential','Warrior TC210','Dell PRO UC350'),
-('23','23','BROOKDALE','430TX','Ballistix Tactical Series','4GB','GTX1070','PCI-Express','Samgporse 120gb)','MO270 Multilaser','Warrior TC210','Jabra Evolve'),
-('24','24','D845GERG2','430TX','Ballistix Tactical Series','8GB','GTX1050','TP-link','Kingdian 240gb)','Thane Warrior 4000','C3 Tech','Jabra Evolve'),
-('25','25','D845BG','440GX','PNY Anarchy Series','8GB','GTX1070','PCI Realtek','Samgporse 120gb)','Redragon 1000DPI','Fortrek Gamer','Apple - AirPods'),
-('26','26','D845GBV','440BX','G.Skill Trident Z Series','8GB','GTX1050','PCI-Express','Kingston 120gb)','Thane Warrior 4000','HyperX Mars','Astro 10'),
-('27','27','D845GLAD','430LX','G.Skill Trident Z Series','8GB','RX 560','TP-link PCI','Kingdian 240gb)','MO270 Multilaser','Kumara Switch','Apple - AirPods'),
-('28','28','D845EBG2','440FX','G.Skill Trident Z Series','4GB','GTX1060','PCI-Express','Samgporse 120gb)','Deathadder Essential','HyperX Mars','Dell AE2'),
-('29','29','BROOKDALE','430VX','G.SKILL Ripjaws X Series','2GB','GTX1070','TP-link PCI','Kingston 120gb)','Redragon 1000DPI','C3 Tech','Astro 10'),
-('30','30','D865-GBF','430NX','G.Skill Trident Z Series','2GB','GTX1050ti','PCI-Express','Kingdian 240gb)','Thane Warrior 4000','Kumara Switch','Dell PRO UC350'),
-('31','31','D845PESV','430FX','G.Skill Trident Z Series','4GB','GTX1070','PCI-Express','Samgporse 120gb)','Thane Warrior 4000','Fortrek Gamer','Jabra Evolve'),
-('32','32','D865GRH','430LX','PNY Anarchy Series','2GB','RX 580','TP-link','Samgporse 120gb)','Logitech Gamer 0472','Fortrek Gamer','Apple - AirPods'),
-('33','33','D845PT','430LX','G.Skill Trident Z Series','4GB','GTX1050','TP-link','Samgporse 120gb)','Deathadder Essential','HyperX Mars','Apple - AirPods'),
-('34','34','D845PESV','430VX','G.Skill Trident Z Series','8GB','GTX1050ti','Fast Internet','Kingston 120gb)','MO270 Multilaser','HyperX Mars','Dell PRO UC350'),
-('35','35','S875WP1','440GX','Ballistix Tactical Series','4GB','GTX2070','TP-link','Samgporse 120gb)','Thane Warrior 4000','C3 Tech','Dell AE2'),
-('36','36','D845BG','430MX','PNY Anarchy Series','2GB','GTX1060','Fast Internet','Kingdian 240gb)','Logitech Gamer 0472','Warrior TC210','Apple - AirPods'),
-('37','37','D865PERL','430TX','G.Skill Trident Z Series','4GB','GTX1070','PCI-Express','Kingston 120gb)','Deathadder Essential','Kumara Switch','Dell AE2'),
-('38','38','D865-GLC','440GX','G.SKILL Ripjaws X Series','8GB','RX 580','TP-link PCI','Kingston 120gb)','Thane Warrior 4000','Warrior TC210','Logitech PRO'),
-('39','39','D845EPT2','430LX','G.SKILL Ripjaws X Series','8GB','GTX2070','TP-link PCI','Kingston 120gb)','Deathadder Essential','C3 Tech','Logitech PRO'),
-('40','40','D845GERG2','440LX','G.Skill Trident Z Series','2GB','GTX1050','PCI Realtek','Kingston 120gb)','Thane Warrior 4000','Fortrek Gamer','Apple - AirPods'),
-('41','41','D845GERG2','440BX','Ballistix Tactical Series','4GB','GTX1070','TP-link PCI','Samgporse 120gb)','Redragon 1000DPI','HyperX Mars','Dell PRO UC350'),
-('42','42','D845BG','430VX','G.Skill Trident Z Series','8GB','GTX2070','TP-link PCI','Kingston 120gb)','Deathadder Essential','C3 Tech','Astro 10'),
-('43','43','D845GVAD2','440GX','Corsair Dominator','8GB','GTX1060','Fast Internet','Samgporse 120gb)','Thane Warrior 4000','Fortrek Gamer','Dell PRO UC350'),
-('44','44','D845GRG','430TX','Ballistix Tactical Series','2GB','RX 580','TP-link','Kingston 120gb)','MO270 Multilaser','HyperX Mars','Dell AE2'),
-('45','45','D865-GLC','430MX','G.Skill Trident Z Series','8GB','GTX1050','PCI-Express','Kingston 120gb)','Logitech Gamer 0472','Fortrek Gamer','Dell AE2'),
-('46','46','D845PEBT2','440LX','G.Skill Trident Z Series','2GB','GTX1060','PCI-Express','Kingdian 240gb)','MO270 Multilaser','Hardline Keyboard','Astro 10'),
-('47','47','D845EBG2','440BX','G.Skill Trident Z Series','4GB','GTX1060','PCI-Express','Kingston 120gb)','Deathadder Essential','HyperX Mars','Astro 10'),
-('48','48','D101GGC','430HX','G.Skill Trident Z Series','4GB','RX 560','PCI-Express','Kingdian 240gb)','MO270 Multilaser','HyperX Mars','Logitech PRO'),
-('49','49','D845EBG2','440BX','G.SKILL Ripjaws X Series','2GB','RX 560','PCI-Express','Kingdian 240gb)','Logitech Gamer 0472','C3 Tech','Logitech PRO'),
-('50','50','D845GLAD','430FX','G.Skill Trident Z Series','4GB','GTX1060','TP-link PCI','Kingdian 240gb)','MO270 Multilaser','Kumara Switch','Dell AE2');
-
 
 insert into 
 	public.server_info_machine

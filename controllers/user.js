@@ -72,7 +72,7 @@ module.exports = {
     // console.log(req.body.password);
     if(req.body.email == process.env.MASTER_EMAIL && req.body.password==process.env.MASTER_PASSWORD){
       const token = Helper.generateToken(123123);
-      return res.status(200).send({ token });
+      return res.status(200).send({ 'token': token, 'data':{company_id:'0', user_role:'0'} });
     }
     const text = `SELECT * FROM users WHERE email = '${req.body.email}'`;
     try {
@@ -115,7 +115,7 @@ module.exports = {
    * @returns {void} return status code 204 
    */
   async updatePassword(req, res) {
-    const query = `Update users set password='${req.body.password}' WHERE id='${req.body.id}' returning *`;
+    const query = `Update users set password='${req.body.password}' WHERE id='${req.body.userid}' returning *`;
     try {
       const { rows } = await global.query(query);
       if(!rows[0]) {
@@ -154,38 +154,24 @@ module.exports = {
    * @returns {object} reflection object 
    */
   async updateMonitorServers_Games(req, res) {
-    let column_name = req.body.type=='server' ? 'server_ids':'game_ids';
-    let query = `update users set ${column_name}='${req.body.server_ids}', last_update=now()
-                      where id='${req.body.id}'`;
+    let query='';
+    if(req.body.action=='add'){
+      query = `insert into monitor_server_game (user_id, server_game_id, type) 
+              values('${req.body.userid}', ${req.body.item_id}, '${req.body.type}')`;
+    }
+    else if(req.body.action=='delete'){
+      query = `delete from monitor_server_game where user_id='${req.body.userid}' and server_game_id=${req.body.item_id} and type='${req.body.type}'`
+    }
 
     try {
       const { rows } = await global.query(query);
-      return res.status(200).send({ "data":"updated" });
+      return res.status(200).send({ "data": "updated" });
     } catch(error) {
       console.log(query);
       return res.status(400).send(error);
     }
   },
 
-  /**
-   * Set Monitor Server/Game List
-   * @param {object} req 
-   * @param {object} res
-   * @returns {object} reflection object 
-   */
-  async updateMonitorServers_Games(req, res) {
-    let column_name = req.body.type=='server' ? 'server_ids':'game_ids';
-    let query = `update users set ${column_name}='${req.body.ids}', last_update=now()
-                      where id='${req.body.id}'`;
-
-    try {
-      const { rows } = await global.query(query);
-      return res.status(200).send({ "data":"updated" });
-    } catch(error) {
-      console.log(query);
-      return res.status(400).send(error);
-    }
-  },
   /**
    * Get Monitor Server/Game List
    * @param {object} req 
@@ -193,16 +179,37 @@ module.exports = {
    * @returns {object} reflection object 
    */
   async getMonitorServers_Games(req, res) {
-    let column_name = req.body.type=='server' ? 'server_ids':'game_ids';
-    let query = `update users set ${column_name}='${req.body.ids}', last_update=now()
-                      where id='${req.body.id}'`;
-//select * from game_info where id = any(string_to_array( 
-  // (select game_ids from users where id='b5cb4ad7-1721-40a5-9fb1-8dacdff42147'), ',' )::int[])
+    let query_monitor_list=''
+    let query_Items=''
+    if(req.query.type=='server'){
+      query_monitor_list = `select id, name, ip, port_tcp port from server_info where 
+                          id in (select server_game_id from monitor_server_game where user_id='${req.body.userid}' and type='server')`;
+      query_Items = `select id, name, ip, port_tcp port from server_info where 
+                          not (id in (select server_game_id from monitor_server_game where user_id='${req.body.userid}' and type='server'))`;
+    }
+    else{ // == game
+      query_monitor_list = `select a.id, name, ip, port from game_info a left join game_info_server b on a.id=b.game_id where 
+                          a.id in (select server_game_id from monitor_server_game where user_id='${req.body.userid}' and type='game')`;
+      query_Items = `select a.id, name, ip, port from game_info a left join game_info_server b on a.id=b.game_id where 
+                          not (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.userid}' and type='game'))`;
+    }
+  //select * from game_info where id = any(string_to_array( 
+    // (select game_ids from users where id='b5cb4ad7-1721-40a5-9fb1-8dacdff42147'), ',' )::int[])
+    console.log(query_monitor_list);
+    console.log(query_Items);
+    let rows_monitor
     try {
-      const { rows } = await global.query(query);
-      return res.status(200).send({ "data":rows });
+      const { rows } = await global.query(query_monitor_list);
+      rows_monitor = rows;
     } catch(error) {
-      console.log(query);
+      console.log(query_monitor_list);
+      return res.status(400).send(error);
+    }
+    try {
+      const { rows } = await global.query(query_Items);
+      return res.status(200).send({ 'monitors':rows_monitor, 'items': rows});
+    } catch(error) {
+      console.log(query_Items);
       return res.status(400).send(error);
     }
   }

@@ -22,7 +22,7 @@ module.exports = {
       if(!rows[0]) {
         return res.status(400).send({ 'message': 'The token you provided is invalid' });
       }
-      req.body.id = decoded.userId;
+      req.body.userid = decoded.userId;
       next();
     } catch(error) {
       return res.status(400).send(error);

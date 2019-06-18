@@ -33,6 +33,7 @@ router.get('/getInetAvgSpeedPerRegion', staticsController.getInetAvgSpeedPerRegi
 router.get('/getPacketLossStaticSXC', staticsController.getPacketLossStaticSXC);
 router.get('/getPacketLossStaticSXS', staticsController.getPacketLossStaticSXS);
 router.get('/getServerOffline', staticsController.getServerOffline);
+router.get('/getConfigurableAlert', staticsController.getConfigurableAlert);
 
 router.get('/getAverageLoginTime', staticsController.getAverageLoginTime);
 router.get('/getHistoryUptime', staticsController.getHistoryUptime);
