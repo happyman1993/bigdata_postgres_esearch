@@ -1091,19 +1091,24 @@ module.exports = {
      * @param {*} next 
      */
     async getConfigurableAlert(req, res, next){
-        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
-        var ranking_option = req.query.option_like ? req.query.option_like : "isp";
-        var type = req.query.type;
+        var company_id = req.body.user.company_id ? ("and company_id=" + req.body.user.company_id) : "";
+        var groupby_type = req.query.type ? req.query.type : "isp";
+        var user_count_pro = req.query.user_count_pro
 
-        sql = `select name, cpu, ram::integer, packetloss::integer
-                from (
-                    select server_id, name, cpu, memory_use*100/(memory_free+memory_use) ram 
-                    from server_info a join server_info_machine b on a.id = b.server_id where 1=1 ${company_id}
-                ) b
-                left join (
-                    select server_id, avg(packet_loss_with*100/packet_count) packetloss from client_info_network_day 
-                    where server_id in (select id from server_info where 1=1 ${company_id}) group by server_id
-                ) c using(server_id)`;
+        sql = `select coalesce(client_count_alert*100.0/client_count, 0) user_count_pro, packetloss, namea
+                from(
+                    select count(a.client_id) client_count, avg(packet_loss_with*100/packet_count)::numeric::integer packetloss, ${groupby_type} namea
+                    from client_info_network_day a left join server_info b on a.server_id=b.id
+                    where a.server_id in (select id from server_info where 1=1 ${company_id}) and a.client_id in (select id from client_info where 1=1 ${company_id})
+                    group by namea
+                ) a 
+                left join(
+                    select count(a.client_id) client_count_alert, ${groupby_type} namea
+                    from client_info_network_day a left join server_info b on a.server_id=b.id
+                    where a.server_id in (select id from server_info where 1=1 ${company_id}) and a.client_id in (select id from client_info where 1=1 ${company_id}) 
+                            and packet_loss_with*100/packet_count>${user_count_pro}
+                    group by namea
+                ) b using(namea)`;
 
         try{
             const { rows, rowCount } = await global.query(sql);
@@ -1113,7 +1118,42 @@ module.exports = {
             return res.status(400).send(error);
         }
     },
-    
+
+    /**
+     * server to game  ping, packetloss status
+     * 
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getMonitoringServerGameStatus(req, res, next){
+        var company_id = req.body.user.company_id ? ("and company_id=" + req.body.user.company_id) : "";
+        var groupby_type = req.query.type ? req.query.type : "isp";
+        var user_count_pro = req.query.user_count_pro
+
+        sql = `with cte as (select row_number() over (partition by server_id, game_server_id
+                                order by updated_at desc) as rn,
+                            server_id, game_server_id,  ping_mean, packet_loss, updated_at
+                        from public.monitoring_server_results_day 
+                        where
+                            server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='server') 
+                            and game_server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='game')
+                    ) 
+                select server_id, b.name sname, game_server_id, d.name gname, coalesce(c.name,'-') id_name, ping_mean, packet_loss, to_char(updated_at, 'MM-DD-YYYY  HH24:MI') updated_at
+                    from cte a left join server_info b on a.server_id=b.id 
+                    left join game_info_server c on a.game_server_id=c.id
+                    left join game_info d on c.game_id = d.id
+                    where rn=1`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": rowCount});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+
 
     /**
      * At what time of day the user log in; profiling of paying users to do events when most of the paying users are online, etc… 

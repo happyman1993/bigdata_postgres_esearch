@@ -114,14 +114,14 @@ module.exports = {
    * @param {object} res 
    * @returns {void} return status code 204 
    */
-  async updatePassword(req, res) {
-    const query = `Update users set password='${req.body.password}' WHERE id='${req.body.userid}' returning *`;
+  async updateUserinfo(req, res) {
+    const query = `Update users set ${req.body.fieldname}='${req.body.value}' WHERE id='${req.body.user.id}' returning *`;
     try {
       const { rows } = await global.query(query);
       if(!rows[0]) {
         return res.status(404).send({'message': 'account not found'});
       }
-      return res.status(204).send({ 'message': 'password changed' });
+      return res.status(204).send({ 'message': 'user info changed' });
     } catch(error) {
       console.log(query);
       return res.status(400).send(error);
@@ -157,15 +157,32 @@ module.exports = {
     let query='';
     if(req.body.action=='add'){
       query = `insert into monitor_server_game (user_id, server_game_id, type) 
-              values('${req.body.userid}', ${req.body.item_id}, '${req.body.type}')`;
+              values('${req.body.user.id}', ${req.body.item_id}, '${req.body.type}')`;
     }
     else if(req.body.action=='delete'){
-      query = `delete from monitor_server_game where user_id='${req.body.userid}' and server_game_id=${req.body.item_id} and type='${req.body.type}'`
+      query = `delete from monitor_server_game where user_id='${req.body.user.id}' and server_game_id=${req.body.item_id} and type='${req.body.type}'`
     }
 
     try {
       const { rows } = await global.query(query);
       return res.status(200).send({ "data": "updated" });
+    } catch(error) {
+      console.log(query);
+      return res.status(400).send(error);
+    }
+  },
+  /**
+   * Update game info (ip, port)
+   * @param {object} req 
+   * @param {object} res
+   * @returns {object} reflection object 
+   */
+  async update_gameinfo(req, res) {
+    const  query = `update game_info_server set ip='${req.body.gameinfo.ip}', port='${req.body.gameinfo.port}', name='${req.body.gameinfo.name}', protocol='${req.body.gameinfo.protocol}'
+                where id=${req.body.gameinfo.id}`;
+    try {
+      const { rows } = await global.query(query);
+      return res.status(200).send({ "result": "updated" });
     } catch(error) {
       console.log(query);
       return res.status(400).send(error);
@@ -183,20 +200,19 @@ module.exports = {
     let query_Items=''
     if(req.query.type=='server'){
       query_monitor_list = `select id, name, ip, port_tcp port from server_info where 
-                          id in (select server_game_id from monitor_server_game where user_id='${req.body.userid}' and type='server')`;
+                          id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='server')`;
       query_Items = `select id, name, ip, port_tcp port from server_info where 
-                          not (id in (select server_game_id from monitor_server_game where user_id='${req.body.userid}' and type='server'))`;
+                          not (id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='server'))`;
     }
     else{ // == game
-      query_monitor_list = `select a.id, name, ip, port from game_info a left join game_info_server b on a.id=b.game_id where 
-                          a.id in (select server_game_id from monitor_server_game where user_id='${req.body.userid}' and type='game')`;
-      query_Items = `select a.id, name, ip, port from game_info a left join game_info_server b on a.id=b.game_id where 
-                          not (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.userid}' and type='game'))`;
+      query_monitor_list = `select a.id, b.name gamename, ip, port, a.protocol, a.name from game_info_server a left join game_info b on a.game_id=b.id where 
+                      a.company_id=${req.body.user.company_id} and (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game'))`;
+      query_Items = `select a.id, b.name gamename, ip, port, a.protocol, a.name from game_info_server a left join game_info b on a.game_id=b.id where 
+                      a.company_id=${req.body.user.company_id} and not (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game'))`;
     }
   //select * from game_info where id = any(string_to_array( 
     // (select game_ids from users where id='b5cb4ad7-1721-40a5-9fb1-8dacdff42147'), ',' )::int[])
-    console.log(query_monitor_list);
-    console.log(query_Items);
+
     let rows_monitor
     try {
       const { rows } = await global.query(query_monitor_list);

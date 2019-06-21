@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 // var elasticsearch = require('elasticsearch');
 // var admin_dashboard = require('../services/admin-dashboard');
+var Auth = require('../middleware/auth');
 
 
 const staticsController = require('../controllers').statics;
@@ -33,7 +34,8 @@ router.get('/getInetAvgSpeedPerRegion', staticsController.getInetAvgSpeedPerRegi
 router.get('/getPacketLossStaticSXC', staticsController.getPacketLossStaticSXC);
 router.get('/getPacketLossStaticSXS', staticsController.getPacketLossStaticSXS);
 router.get('/getServerOffline', staticsController.getServerOffline);
-router.get('/getConfigurableAlert', staticsController.getConfigurableAlert);
+router.get('/getConfigurableAlert', Auth.verifyToken, staticsController.getConfigurableAlert);
+router.get('/getMonitoringServerGameStatus', Auth.verifyToken, staticsController.getMonitoringServerGameStatus);
 
 router.get('/getAverageLoginTime', staticsController.getAverageLoginTime);
 router.get('/getHistoryUptime', staticsController.getHistoryUptime);
