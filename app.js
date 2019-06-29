@@ -9,7 +9,8 @@ var indexRouter = require('./routes/index');
 var dbfakeRouter = require('./routes/db_fake_data');
 var userRouter = require('./routes/users');
 var companyRouter = require('./routes/company');
-
+var serverRouter = require('./routes/server');
+var customergroupRouter = require('./routes/customergroup')
 var cors = require('cors');
 
 /**
@@ -39,6 +40,8 @@ app.use('/', indexRouter);
 app.use('/', dbfakeRouter);
 app.use('/', userRouter);
 app.use('/', companyRouter);
+app.use('/', serverRouter);
+app.use('/', customergroupRouter)
 
 let allowCrossDomain = function(req, res, next) {
   res.header('Access-Controll-Allow-Credentials', true);

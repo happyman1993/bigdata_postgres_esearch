@@ -15,7 +15,7 @@ router.post('/users/login',UserWithDb.login);
 router.post('/users/updateuserinfo',Auth.verifyToken, UserWithDb.updateUserinfo);
 router.delete('/users/me', Auth.verifyToken, UserWithDb.delete);
 router.delete('/users/:id', Auth.verifyToken, UserWithDb.delete);
-router.get('/users', UserWithDb.getList);//Auth.verifyToken, 
+router.get('/users', Auth.verifyToken, UserWithDb.getList);//Auth.verifyToken, 
 
 router.post('/users/monitor_server_game_list', Auth.verifyToken, UserWithDb.updateMonitorServers_Games);
 router.get('/users/monitor_server_game_list', Auth.verifyToken, UserWithDb.getMonitorServers_Games);

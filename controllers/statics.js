@@ -12,7 +12,8 @@ module.exports = {
      */
     async getDashboardStatics(req, res, next) {
 
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
         var sql_total = `select total_users_online, peak_users_online, unique_users, total_servers_online, total_servers_offline, packet_loss_improvement::integer, ping_improvement::integer
                         from (
@@ -32,11 +33,11 @@ module.exports = {
                         ) c using(id)
                         join (
                             select 1 id, count(*) as total_servers_online from server_info where 
-                            (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))/1000<=300000 ${company_id}
+                            (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))/1000<=300000 ${company_id_s}
                         ) d using(id)
                         join (
                             select 1 id, count(*) as total_servers_offline from server_info where 
-                            (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))/1000>300000 ${company_id}
+                            (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))/1000>300000 ${company_id_s}
                         ) e using(id)
                         join (
                             select 1 id, avg((packet_loss_without-packet_loss_with)*100/packet_loss_without) packet_loss_improvement,
@@ -49,6 +50,7 @@ module.exports = {
             const { rows, rowCount } = await global.query(sql_total);
             return res.status(200).send({"data":rows, "x_total_count": 1});
         }catch(error){
+            console.log(sql_total)
             return res.status(400).send(error);
         }
     },
@@ -63,6 +65,7 @@ module.exports = {
      */
     async getUniqueUsersPerTime(req, res, next){
         // console.log("call getUniqueLoggedUsercount - req.body - " + JSON.stringify(req.body));
+        var client_ids = req.body.user.company_id!='0' ? ("and a.client_id in (select id from client_info where company_id=" + req.body.user.company_id) + ")" : "";
 
         results = [];
 
@@ -94,9 +97,8 @@ module.exports = {
             ) a
             left join(
                 select b.date1, count(b.client_id) from (select a.client_id, date_trunc('${time_type}', a.last_login) date1 from public.client_info_login as a
-                where a.last_login > ${where_cond} group by a.client_id, date1 ) as b group by b.date1 order by date1 asc
+                where  a.last_login > ${where_cond} ${client_ids} group by a.client_id, date1 ) as b group by b.date1 order by date1 asc
             ) b using(date1)`;
-            console.log(sql);
 
         try{
             const { rows, rowCount } = await global.query(sql);
@@ -107,10 +109,17 @@ module.exports = {
             return res.status(400).send(error);
         }
     },
-
+    /**
+     * How many users are online simultaneously in real time per game / application and total on both
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
     async getOnlineUsercountPerGame(req, res, next) {
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
+        var client_ids = req.body.user.company_id!='0' ? ("and client_id in (select id from client_info where company_id=" + req.body.user.company_id) + ")" : "";
 
-        var sql_total = `select count(c.game_id) from (select b.game_id from public.client_game_info as b group by b.game_id) as c`;
+        var sql_total = `select count(c.game_id) from (select b.game_id from public.client_game_info as b where 1=1 ${client_ids} group by b.game_id) as c`;
         var total_count = 0;
         try{
         const { rows, rowCount } = await global.query(sql_total);
@@ -128,11 +137,50 @@ module.exports = {
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
     
         var sql = `	select x.*, y.name as gamename from	(select a.game_id, count(c.id) as user_online_count from 
-            ( public.client_game_info as a  
+            ( (select * from public.client_game_info where 1=1 ${client_ids}) as a  
             left join 
-            (select b.id from public.client_info as b where (EXTRACT(EPOCH FROM (now()::timestamp - b.updated_at::timestamp)))/1000<30000000  ) as c 
+            (select b.id from public.client_info as b where (EXTRACT(EPOCH FROM (now()::timestamp - b.updated_at::timestamp)))/1000<30000000 ${company_id} ) as c 
             on a.client_id = c.id) 
         group by a.game_id ) as x left join public.game_info as y on x.game_id = y.id  ${orderby} ${limit} ${offset}`;
+
+        try{
+            const { rows, rowCount } = await global.query(sql);
+        
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            return res.status(400).send(error);
+        }
+    },
+
+
+    /**
+     * How many users are online simultaneously in real time per company and total on both
+     */
+
+    async getOnlineUsercountPerCompany(req, res, next) {
+
+        var sql_total = `select count(id) from company_info`;
+        var total_count = 0;
+        try{
+        const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            return res.status(400).send(error);
+        }
+
+        // console.log("req.query = ", JSON.stringify(req));
+    
+        var page_no = parseInt(req.query._page);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+    
+        var sql = `	select a.*, coalesce(c.count,0) count from company_info a 
+                    left join 
+                        (select b.company_id, count(b.id) count from public.client_info as b 
+                            where (EXTRACT(EPOCH FROM (now()::timestamp - b.updated_at::timestamp)))/1000<30000000 group by b.company_id ) as c 
+                    on a.id = c.company_id  ${orderby} ${limit} ${offset}`;
 
         try{
             const { rows, rowCount } = await global.query(sql);
@@ -152,28 +200,93 @@ module.exports = {
    * last_update > (current_date - interval '2 day'); 
    */
     async getUniqueLoggedUsercount(req, res, next){
-        console.log("call getUniqueLoggedUsercount - req.body - " + JSON.stringify(req.body));
-    
+        if(req.body.user.company_id!='0'){  //admin panel
+            var client_ids = ("and a.client_id in (select id from client_info where company_id=" + req.body.user.company_id) + ")";
+
+            var intervals = {'Today' : 0, 'Last 3 day':3, 'Last Week':7, 'Last Month':30, 'Last Year':365};
         
-        var intervals = {'Today' : 0, 'Last 3 day':3, 'Last Week':7, 'Last Month':30, 'Last Year':365};
+            results = [];
+        
+            for(var key in intervals){
+                var sql = `select count(b.client_id) from (select a.client_id from public.client_info_login as a
+                                where a.last_login > (current_date - interval '${intervals[key]} day') ${client_ids} group by a.client_id) as b `;
+                try{
+                    const { rows, rowCount } = await global.query(sql);
+                    if(rowCount>0){
+                    results.push({'date':key, 'uniques':rows[0]['count']});
+                    }
+                }catch(error){
+                    console.log("error: " + error);
+                    return res.status(400).send(error);
+                }
+            }
+        
+            return res.status(200).send({"data":results, "x_total_count": 5});
+        }
+        else{   //master panel
+            var duration = "";
+            if(req.query.duration_like){
+                switch(req.query.duration_like){
+                    case "today":     duration = '0';      break;
+                    case "last3day":  duration = '3'; break;
+                    case 'lastweek':  duration = '7'; break;
+                    case 'lastmonth': duration = '30'; break;
+                    case 'lastyear':  duration = '365'; break;
+                }
+                duration = `where a.last_login > (current_date - interval '${duration} day')`
+            }
+            var sql_total = `select count(id) from company_info`;
+           
+            var total_count = 0;
+            try{
+                const { rows, rowCount } = await global.query(sql_total);
+                if(rowCount>0)
+                    total_count = rows[0]['count'];
+                }catch(error){
+                    return res.status(400).send(error);
+            }
+
+            var total_unique_users = 0;
+            page_no = parseInt(req.query._page, 10);
+
+            if(page_no==1){
+
+                try{
+                    let sql = `select count(b.client_id)
+                                from (select distinct(a.client_id) from public.client_info_login a ${duration}) b`
+                    const { rows, rowCount } = await global.query(sql);
+                    if(rowCount>0)
+                        total_unique_users = rows[0]['count'];
+                    }catch(error){
+                        return res.status(400).send(error);
+                }
+            }
+
+            var limit = "limit " + req.query._limit;
+            var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+            var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
     
-        results = [];
-    
-        for(var key in intervals){
-            var sql = `select count(b.client_id) from (select a.client_id from public.client_info_login as a
-                            where a.last_login > (current_date - interval '${intervals[key]} day') group by a.client_id) as b `;
+            var sql = `select d.name, coalesce(count,0) count 
+                        from company_info d 
+                        left join   (
+                                        select count(b.client_id), c.company_id 
+                                        from (select distinct(a.client_id) from public.client_info_login a ${duration}) b
+                                        left join client_info c on b.client_id=c.id
+                                        group by c.company_id
+                                    ) e 
+                        on d.id=e.company_id
+                        ${orderby} ${limit} ${offset}`;
+            
             try{
                 const { rows, rowCount } = await global.query(sql);
-                if(rowCount>0){
-                results.push({'date':key, 'uniques':rows[0]['count']});
-                }
+                if(page_no==1)
+                    rows.splice(0,0,{name:'Total', count:total_unique_users})
+                return res.status(200).send({"data":rows, "x_total_count": total_count});
             }catch(error){
-                console.log("error: " + error);
+                console.log(sql);
                 return res.status(400).send(error);
             }
         }
-    
-        return res.status(200).send({"data":results, "x_total_count": 5});
     },
   
   
@@ -188,36 +301,89 @@ module.exports = {
                 case 'lastyear':  duration = `where (a.update_at >= (current_date - interval '365 day'))`; break;
             }
         }
-    
-        var sql_total = `select count(*) from (select a.game_id from 
-                            public.client_game_info as a ${duration}
-                            group by a.game_id) as b`;
-        console.log(sql_total);
+        if(req.body.user.company_id!='0'){
+            var client_ids = ("and a.client_id in (select id from client_info where company_id=" + req.body.user.company_id) + ")"
+            var sql_total = `select count(*) from (select a.game_id from 
+                                public.client_game_info as a ${duration} ${client_ids}
+                                group by a.game_id) as b`;
+            
+            var total_count = 0;
+            try{
+                const { rows, rowCount } = await global.query(sql_total);
+            if(rowCount>0)
+                total_count = rows[0]['count'];
+            }catch(error){
+                return res.status(400).send(error);
+            }
         
-        var total_count = 0;
-        try{
-            const { rows, rowCount } = await global.query(sql_total);
-        if(rowCount>0)
-            total_count = rows[0]['count'];
-        }catch(error){
-            return res.status(400).send(error);
-        }
-    
-        page_no = parseInt(req.query._page, 10);
-        var limit = "limit " + req.query._limit;
-        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
-        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+            page_no = parseInt(req.query._page, 10);
+            var limit = "limit " + req.query._limit;
+            var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+            var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        var sql = `select x.*, y.name as gamename 
-                    from	(select a.game_id, count(a.client_id) as user_online_count from 
-                    public.client_game_info as a ${duration} 
-                    group by a.game_id  ) as x left join public.game_info as y on x.game_id = y.id ${orderby} ${limit} ${offset}`;
-        console.log(sql);
-        try{
-            const { rows, rowCount } = await global.query(sql);
-            return res.status(200).send({"data":rows, "x_total_count": total_count});
-        }catch(error){
-            return res.status(400).send(error);
+            var sql = `select x.*, y.name as gamename 
+                        from	(select a.game_id, count(a.client_id) as user_online_count from 
+                        public.client_game_info as a ${duration} ${client_ids}
+                        group by a.game_id  ) as x left join public.game_info as y on x.game_id = y.id ${orderby} ${limit} ${offset}`;
+            
+            try{
+                const { rows, rowCount } = await global.query(sql);
+                return res.status(200).send({"data":rows, "x_total_count": total_count});
+            }catch(error){
+                console.log(sql);
+                return res.status(400).send(error);
+            }
+        }
+        else{
+            var sql_total = `select count(id) from company_info`;
+            
+            var total_count = 0;
+            try{
+                const { rows, rowCount } = await global.query(sql_total);
+            if(rowCount>0)
+                total_count = rows[0]['count'];
+            }catch(error){
+                return res.status(400).send(error);
+            }
+        
+            var total_peak_users = 0;
+            page_no = parseInt(req.query._page, 10);
+
+            if(page_no==1){
+
+                try{
+                    let sql = `select count(a.client_id) from client_game_info a ${duration}`
+                    const { rows, rowCount } = await global.query(sql);
+                    if(rowCount>0)
+                        total_peak_users = rows[0]['count'];
+                    }catch(error){
+                        return res.status(400).send(error);
+                }
+            }
+
+            var limit = "limit " + req.query._limit;
+            var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+            var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+            var sql = `select d.name, coalesce(count,0) count 
+                        from company_info d 
+                        left join   (
+                                        select count(b.client_id), c.company_id 
+                                        from (select a.client_id from client_game_info a ${duration}) b
+                                        left join client_info c on b.client_id=c.id
+                                        group by c.company_id
+                                    ) e 
+                        on d.id=e.company_id ${orderby} ${limit} ${offset}`;
+            
+            try{
+                const { rows, rowCount } = await global.query(sql);
+                if(page_no==1)
+                    rows.splice(0,0,{name:'Total', count:total_peak_users})
+                return res.status(200).send({"data":rows, "x_total_count": total_count});
+            }catch(error){
+                console.log(sql);
+                return res.status(400).send(error);
+            }
         }
     },
   
@@ -226,7 +392,7 @@ module.exports = {
  * Number of hours that the player stayed online in the game/application.
  */
     async getOnlineHoursInGame(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
         var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
         // console.log(sql_total);
         
@@ -271,10 +437,12 @@ module.exports = {
      */
     
     async getRankingOfISPs(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
+        var client_ids = req.body.user.company_id!='0' ? ("and client_id in (select id from client_info where company_id=" + req.body.user.company_id) + ")" : "";
+
         var ranking_option = req.query.option_like ? req.query.option_like : "isp";
 
-        var sql_total = `select count(*) from (select ${ranking_option} from client_info_login group by ${ranking_option}) as a`;
+        var sql_total = `select count(*) from (select ${ranking_option} from client_info_login where 1=1 ${client_ids} group by ${ranking_option}) as a`;
         // console.log(sql_total);
         
         var total_count = 0;
@@ -291,7 +459,7 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : " order by count desc";
 
-        sql = `select ${ranking_option} as name, count(client_id) from client_info_login group by ${ranking_option}
+        sql = `select ${ranking_option} as name, count(client_id) from client_info_login where 1=1 ${client_ids} group by ${ranking_option}
                     ${orderby} ${limit} ${offset}`;
 
         try{
@@ -312,9 +480,32 @@ module.exports = {
  * @param {*} next 
  */
     async getListAvailableServers(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
-        var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
+        // page_no = parseInt(req.query._page, 10);
+        // var limit = "limit " + req.query._limit;
+        // var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        // var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        var sql_total
+        if(req.body.user.company_id!='0'){
+            sql_total = `select count(id) from servers_x_company where company_id=${req.body.user.company_id}`;
+
+            sql = `select a.name, a.country, a.isp, a.ip, a.port_tcp, a.port_udp, b.memory_use, (b.download_per_seconds+b.upload_per_seconds) as bandusage, b.cpu 
+            from (select * from server_info where 0=0 ${company_id_s}) a left join server_info_machine b on a.id=b.server_id
+                    `;
+        }
+        else{
+            sql_total = `select count(id) from server_info`
+            sql = `select a.name, a.country, a.isp, a.ip, a.port_tcp, a.port_udp, a.cname, b.memory_use, (b.download_per_seconds+b.upload_per_seconds) as bandusage, b.cpu 
+            from (
+                    select c.*, d.cname from server_info c left join 
+                    (
+                        select x.server_id, string_agg(y.name,',') cname from servers_x_company x left join company_info y on x.company_id=y.id group by x.server_id  
+                    )d on c.id = d.server_id
+	            ) a 
+	        left join server_info_machine b on a.id=b.server_id `;
+        }
         // console.log(sql_total);
         
         var total_count = 0;
@@ -326,37 +517,73 @@ module.exports = {
             return res.status(400).send(error);
         }
     
-        page_no = parseInt(req.query._page, 10);
-        var limit = "limit " + req.query._limit;
-        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
-        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select a.name, a.country, a.isp, a.ip, a.port_tcp, a.port_udp, b.memory_use, (b.download_per_seconds+b.upload_per_seconds) as bandusage, b.cpu 
-            from (select * from server_info where 0=0 ${company_id}) a left join server_info_machine b on a.id=b.server_id
-                    ${orderby} ${limit} ${offset}`;
 
         try{
             const { rows, rowCount } = await global.query(sql);
-            return res.status(200).send({"data":rows, "x_total_count": total_count});
+            return res.status(200).send({"data":rows, "x_total_count": rowCount});
         }catch(error){
             console.log(sql);
             return res.status(400).send(error);
         }
     },
 
+    /**
+     * Show the bandwidth used by each server and the total bandwidth used day/week/month/year  
+     * *************(for Master)*****************
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getBandwidthPerServerMT(req, res, next){
+
+        // var sql_total = `select count(id) from server_info`;
+        // // console.log(sql_total);
+
+        // var total_count = 0;
+        // try{
+        //     const { rows, rowCount } = await global.query(sql_total);
+        // if(rowCount>0)
+        //     total_count = rows[0]['count'];
+        // }catch(error){
+        //     return res.status(400).send(error);
+        // }
+
+        // page_no = parseInt(req.query._page, 10);
+        // var limit = "limit " + req.query._limit;
+        // var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        // var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        sql = `select k.name, k.network_speed, k.projection, coalesce(monthly_bandwidth, 0) bandwidth_used_l30
+                from  server_info k
+                left join (
+                        select server_id, sum(total_download+total_upload) monthly_bandwidth
+                        from  server_info_machine_logs where updatedat>=(current_date - interval '30 day')
+                        group by server_id
+                    ) monthly on k.id=monthly.server_id`;
+//                ${orderby} ${limit} ${offset}`;
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": rowCount});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
 /**
  * Show the bandwidth used by each server and the total bandwidth used day/week/month/year
+ * *************(for Admin)*****************
  * @param {*} req 
  * @param {*} res 
  * @param {*} next 
  */
     async getBandwidthPerServer(req, res, next){
 
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id_s = `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})`;
 
-        var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
+        var sql_total = `select count(*) from servers_x_company where company_id=${req.body.user.company_id}`;
         // console.log(sql_total);
-        
+
         var total_count = 0;
         try{
             const { rows, rowCount } = await global.query(sql_total);
@@ -374,7 +601,7 @@ module.exports = {
         sql = `select k.version status_version, k.monitor_version, k.name, k.country, k.isp, k.ip, coalesce(today_bandwidth, 0) today,
                  coalesce(lastweek_bandwidth,0) lastweek, coalesce(monthly_bandwidth, 0) lastmonth, coalesce(monthly2_bandwidth,0) last2month
                 from (
-                    (select * from server_info where 0=0 ${company_id}) m left join server_info_machine n on m.id=n.server_id
+                    (select * from server_info where 0=0 ${company_id_s}) m left join server_info_machine n on m.id=n.server_id
                 ) k
                 left join (
                     select server_id, sum(daily_bandwidth) as today_bandwidth
@@ -491,6 +718,150 @@ module.exports = {
     },
 
     /**
+     * Show the bandwidth used by each server and the total bandwidth used day/week/month/year
+     * @param {*} req 
+     * @param {*} res 
+     * @param {*} next 
+     */
+    async getBandwidthPerCompany(req, res, next){
+
+        var company_id_s = "";
+
+        var sql_total = `select count(*) from company_info`;
+        // console.log(sql_total);
+
+        var total_count = 0;
+        try{
+            const { rows, rowCount } = await global.query(sql_total);
+        if(rowCount>0)
+            total_count = rows[0]['count'];
+        }catch(error){
+            return res.status(400).send(error);
+        }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        sql = `select k.name, coalesce(today_bandwidth, 0) today, coalesce(lastweek_bandwidth,0) lastweek, coalesce(monthly_bandwidth, 0) lastmonth, coalesce(monthly2_bandwidth,0) last2month
+                from (
+                    select id company_id, name from company_info m
+                ) k
+                left join (
+                    select company_id, sum(daily_bandwidth) as today_bandwidth
+                    from servers_x_company f
+                    left join
+                    (
+                        SELECT
+                        x.server_id, x.daily_bandwidth
+                        FROM (
+                        SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY daily_bandwidth desc) AS r, t.*
+                        FROM
+                            (select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('DAY', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a where a."updatedat">=(current_date - interval '2 day') group by server_id, date_trunc('DAY', a."updatedat")) t) x
+                        WHERE x.r = 1
+                        union all
+                        SELECT
+                        x.server_id, -1*x.daily_bandwidth
+                        FROM (
+                        SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY daily_bandwidth desc) AS r, t.*
+                        FROM
+                            (select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('DAY', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a where a."updatedat">=(current_date - interval '2 day') group by server_id, date_trunc('DAY', a."updatedat")) t) x
+                        WHERE x.r = 2
+                    ) s on f.server_id=s.server_id
+                    group by company_id
+                ) daily using(company_id)
+                left join (
+                    select company_id, sum(monthly_bandwidth) as monthly_bandwidth
+                    from servers_x_company f
+                    left join
+                    (
+                        SELECT
+                        x.server_id, x.monthly_bandwidth
+                        FROM (
+                        SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY monthly_bandwidth desc) AS r, t.*
+                        FROM
+                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedat")) t) x
+                        WHERE x.r = 1                        
+                        union all                        
+                        SELECT
+                        x.server_id, -1*x.monthly_bandwidth
+                        FROM (
+                        SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY monthly_bandwidth desc) AS r, t.*
+                        FROM
+                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedat")) t) x
+                        WHERE x.r = 2
+                    ) s on f.server_id=s.server_id
+                    group by company_id
+                ) monthly using(company_id)
+                left join (
+                    select company_id, sum(monthly_bandwidth) as monthly2_bandwidth
+                    from servers_x_company f
+                    left join
+                    (
+                        SELECT
+                        x.server_id, x.monthly_bandwidth
+                        FROM (
+                        SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY monthly_bandwidth desc) AS r, t.*
+                        FROM
+                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedat")) t) x
+                        WHERE x.r = 1                        
+                        union all                        
+                        SELECT
+                        x.server_id, -1*x.monthly_bandwidth
+                        FROM (
+                        SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY monthly_bandwidth desc) AS r, t.*
+                        FROM
+                            (select server_id, (max(total_download)+max(total_upload)) monthly_bandwidth, date_trunc('month', a."updatedat") monthly_dt 
+                                        from server_info_machine_logs a group by server_id, date_trunc('month', a."updatedat")) t) x
+                        WHERE x.r = 3
+                    ) s on f.server_id=s.server_id
+                    group by company_id
+                ) monthly2 using(company_id)
+                left join (
+                    select company_id, sum(daily_bandwidth) as lastweek_bandwidth
+                    from servers_x_company f
+                    left join
+                    (
+                        SELECT x.server_id, x.daily_bandwidth
+                        FROM (
+                        SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY daily_bandwidth desc) AS r, t.*
+                        from (
+                            select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('week', a."updatedat") monthly_dt 
+                                from server_info_machine_logs a 
+                                where a."updatedat" BETWEEN current_date-EXTRACT(DOW FROM NOW())::INTEGER-18 AND current_date-EXTRACT(DOW from NOW())::INTEGER
+                                group by server_id, date_trunc('week', a."updatedat")) t
+                        ) x
+                        WHERE x.r = 1                        
+                        union all                        
+                        SELECT x.server_id, -1*x.daily_bandwidth
+                        FROM (
+                        SELECT ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY daily_bandwidth desc) AS r, t.*
+                        from (
+                            select server_id, (max(total_download)+max(total_upload)) daily_bandwidth, date_trunc('week', a."updatedat") monthly_dt 
+                                from server_info_machine_logs a 
+                                where a."updatedat" BETWEEN current_date-EXTRACT(DOW FROM NOW())::INTEGER-18 AND current_date-EXTRACT(DOW from NOW())::INTEGER
+                                group by server_id, date_trunc('week', a."updatedat")) t
+                        ) x
+                        WHERE x.r = 2
+                    ) s on f.server_id=s.server_id
+                    group by company_id
+                ) lastweek using(company_id)
+                ${orderby} ${limit} ${offset}`;
+        try{
+            const { rows, rowCount } = await global.query(sql);
+            return res.status(200).send({"data":rows, "x_total_count": total_count});
+        }catch(error){
+            console.log(sql);
+            return res.status(400).send(error);
+        }
+    },
+    /**
      * From the second month, comparison of new users x old x users exit. 
      * ( new users are users that create the account inside the gap of time of comparison, 
      * old user is the users who had account before the gap on interval and still using/playing and 
@@ -501,8 +872,8 @@ module.exports = {
      * @param {*} next 
      */
     async getNewOldExitUser(req, res, next){
-        var company_id = req.query.company_id_like ? ("and id=" + req.query.company_id_like) : "";
-        var company_id1 = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and id=" + req.body.user.company_id) : "";
+        var company_id1 = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         var sql_total = `select count(*) from company_info where 0=0 ${company_id}`;
         // console.log(sql_total);
@@ -566,7 +937,7 @@ module.exports = {
      * @param {*} next 
      */
     async getCurrentPing(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
         // console.log(sql_total);
@@ -613,7 +984,7 @@ module.exports = {
      * @param {*} next 
      */
     async getPingImprovementPerRegion(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         var region = req.query.regiontype_like ? req.query.regiontype_like:"country";
         var sql_total = `select count(*) from (select ${region} from client_info a left join client_info_login b on a.id=b.client_id where 0=0 ${company_id} group by ${region}) k`;
@@ -665,7 +1036,7 @@ module.exports = {
      * @param {*} next 
      */
     async getAveragePacketLoss(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         var region = req.query.regiontype_like ? req.query.regiontype_like:"";
         var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
@@ -703,7 +1074,7 @@ module.exports = {
         else
             sql = `select avg(packet_loss_with)::numeric::integer currentloss, avg(packet_loss_without)::numeric::integer oldloss, avg(improvement)::numeric::integer improvement, ${region} region
                 from (
-                    select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where company_id=3
+                    select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where 0=0 ${company_id}
                 ) a
                 left join(
                     select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/packet_loss_without improvement 
@@ -730,9 +1101,14 @@ module.exports = {
      * @param {*} next 
      */
     async getOnlineUsersPerServer(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
-        var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
+        var sql_total
+        if(req.body.user.company_id!='0')
+            sql_total = `select count(id) from servers_x_company where company_id=${req.body.user.company_id}`;
+        else
+            sql_total = `select count(id) from server_info`
+
         
         var total_count = 0;
         try{
@@ -749,7 +1125,7 @@ module.exports = {
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
         sql = `select server_id, name servername, client_tcp+client_udp count from server_info x join server_info_machine y on x.id=y.server_id 
-                where 1=1 ${company_id}
+                where 1=1 ${company_id_s}
             ${orderby} ${limit} ${offset}`;
 
         try{
@@ -771,17 +1147,17 @@ module.exports = {
      * @param {*} next 
      */
     async getAvailableUsedServers(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
         sql = `select availables, uses
                 from (
                     select 1 id, count(*) availables from server_info x join server_info_machine y on x.id=y.server_id 
-                    where cpu>0 and memory_use>0 and memory_free>0 ${company_id}
+                    where cpu>0 and memory_use>0 and memory_free>0 ${company_id_s}
                 ) b
                 join (
                     select 1 id, count(*) uses 
                     from (select client_tcp+client_udp count1 
-                            from server_info x join server_info_machine y on x.id=y.server_id where 1=1 ${company_id}) a 
+                            from server_info x join server_info_machine y on x.id=y.server_id where 1=1 ${company_id_s}) a 
                     where a.count1>0
                 ) c using(id)`;
 
@@ -803,7 +1179,7 @@ module.exports = {
      * @param {*} next 
      */
     async getUsersSegmentedByRegion(req, res, next){
-        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         var regions = req.query.selected_regions.split(',');
         var conditions = company_id;
@@ -855,7 +1231,7 @@ module.exports = {
      * @param {*} next 
      */
     async getInternetSpeedOfUser(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
         
@@ -898,7 +1274,7 @@ module.exports = {
      * @param {*} next 
      */
     async getInetAvgSpeedPerRegion(req, res, next){
-        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
 
         var conditions = "";
@@ -965,9 +1341,14 @@ module.exports = {
      * @param {*} next 
      */
     async getPacketLossStaticSXC(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
-        var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
+        var sql_total
+        if(req.body.user.company_id!='0')
+            sql_total = `select count(id) from servers_x_company where company_id=${req.body.user.company_id}`;
+        else
+            sql_total = `select count(id) from server_info`
+
         
         var total_count = 0;
         try{
@@ -984,7 +1365,7 @@ module.exports = {
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
         sql = `select servername, server_id, coalesce(packet_loss::INTEGER,0) packet_loss , coalesce(loss_pro::INTEGER, 0) loss_pro
-                from (select id server_id, name servername from server_info where 1=1 ${company_id}) a
+                from (select id server_id, name servername from server_info where 1=1 ${company_id_s}) a
                 left join (
                     select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/avg(packet_count) loss_pro 
                     from client_info_network_day group by server_id
@@ -1010,9 +1391,14 @@ module.exports = {
      * @param {*} next 
      */
     async getPacketLossStaticSXS(req, res, next){
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
-        var sql_total = `select count(*) from server_info where 0=0 ${company_id}`;
+        var sql_total
+        if(req.body.user.company_id!='0')
+            sql_total = `select count(id) from servers_x_company where company_id=${req.body.user.company_id}`;
+        else
+            sql_total = `select count(id) from server_info`
+
         
         var total_count = 0;
         try{
@@ -1029,12 +1415,12 @@ module.exports = {
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
         sql = `select servername, coalesce(packet_loss::INTEGER,0) packet_loss , coalesce(loss_pro::INTEGER, 0) loss_pro
-                from (select id server_id_src , name servername from server_info where 1=1 ${company_id}) a
+                from (select id server_id_src , name servername from server_info where 1=1 ${company_id_s}) a
                 left join (
                     select server_id_src, sum(packet_loss) packet_loss, avg(packet_loss)*100/avg(packet_count) loss_pro 
                     from server_info_network_day
-                    where server_id_dest in (select id from server_info where 1=1 ${company_id}) 
-                        and server_id_src in (select id from server_info where 1=1 ${company_id})
+                    where server_id_dest in (select id from server_info where 1=1 ${company_id_s}) 
+                        and server_id_src in (select id from server_info where 1=1 ${company_id_s})
                     group by server_id_src
                 ) b using(server_id_src)
                 ${orderby} ${limit} ${offset}`;
@@ -1058,16 +1444,16 @@ module.exports = {
      * @param {*} next 
      */
     async getServerOffline(req, res, next){
-        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
         sql = `select servername, cpu, ram::integer, packetloss::integer
                 from (
                     select server_id, name servername, cpu, memory_use*100/(memory_free+memory_use) ram 
-                    from server_info a join server_info_machine b on a.id = b.server_id where 1=1 ${company_id}
+                    from server_info a join server_info_machine b on a.id = b.server_id where 1=1 ${company_id_s}
                 ) b
                 left join (
                     select server_id, avg(packet_loss_with*100/packet_count) packetloss from client_info_network_day 
-                    where server_id in (select id from server_info where 1=1 ${company_id}) group by server_id
+                    where server_id in (select id from server_info where 1=1 ${company_id_s}) group by server_id
                 ) c using(server_id)`;
 
         try{
@@ -1091,7 +1477,9 @@ module.exports = {
      * @param {*} next 
      */
     async getConfigurableAlert(req, res, next){
-        var company_id = req.body.user.company_id ? ("and company_id=" + req.body.user.company_id) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
+
         var groupby_type = req.query.type ? req.query.type : "isp";
         var user_count_pro = req.query.user_count_pro
 
@@ -1099,13 +1487,13 @@ module.exports = {
                 from(
                     select count(a.client_id) client_count, avg(packet_loss_with*100/packet_count)::numeric::integer packetloss, ${groupby_type} namea
                     from client_info_network_day a left join server_info b on a.server_id=b.id
-                    where a.server_id in (select id from server_info where 1=1 ${company_id}) and a.client_id in (select id from client_info where 1=1 ${company_id})
+                    where a.server_id in (select id from server_info where 1=1 ${company_id_s}) and a.client_id in (select id from client_info where 1=1 ${company_id})
                     group by namea
                 ) a 
                 left join(
                     select count(a.client_id) client_count_alert, ${groupby_type} namea
                     from client_info_network_day a left join server_info b on a.server_id=b.id
-                    where a.server_id in (select id from server_info where 1=1 ${company_id}) and a.client_id in (select id from client_info where 1=1 ${company_id}) 
+                    where a.server_id in (select id from server_info where 1=1 ${company_id_s}) and a.client_id in (select id from client_info where 1=1 ${company_id}) 
                             and packet_loss_with*100/packet_count>${user_count_pro}
                     group by namea
                 ) b using(namea)`;
@@ -1127,10 +1515,6 @@ module.exports = {
      * @param {*} next 
      */
     async getMonitoringServerGameStatus(req, res, next){
-        var company_id = req.body.user.company_id ? ("and company_id=" + req.body.user.company_id) : "";
-        var groupby_type = req.query.type ? req.query.type : "isp";
-        var user_count_pro = req.query.user_count_pro
-
         sql = `with cte as (select row_number() over (partition by server_id, game_server_id
                                 order by updated_at desc) as rn,
                             server_id, game_server_id,  ping_mean, packet_loss, updated_at
@@ -1164,7 +1548,7 @@ module.exports = {
      * @param {*} next 
      */
     async getAverageLoginTime(req, res, next){
-        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         sql = `select client_id, to_char(avg(last_login::time),'HH:MI') avgtime from client_info_login 
                 where client_id in (select id from client_info where 1=1 ${company_id}) group by client_id `;
@@ -1187,7 +1571,7 @@ module.exports = {
      * @param {*} next 
      */
     async getHistoryUptime(req, res, next){
-        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
         sql = '';
         if(req.query.packet_loss_time && req.query.server_id){
@@ -1205,7 +1589,7 @@ module.exports = {
                 from 
                     (select server_id, string_agg(distinct(to_char(last_update, 'MM-DD-YYYY HH24:MI')), ',') packet_loss_times 
                         from client_info_server_network group by server_id)a 
-                left join server_info b on a.server_id=b.id where 1=1 ${company_id}`;
+                left join server_info b on a.server_id=b.id where 1=1 ${company_id_s}`;
 
         try{
             const { rows, rowCount } = await global.query(sql);
@@ -1224,7 +1608,7 @@ module.exports = {
      * @param {*} next 
      */
     async getServerOfflineTime(req, res, next){
-        var company_id = req.query.company_id ? ("and company_id=" + req.query.company_id) : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
         var duration = "current_date";
         if(req.query.duration){
@@ -1239,20 +1623,20 @@ module.exports = {
 
         sql = `select server_id, ip, isp, coalesce(offline_time_uxs, 0) offline_time_uxs , coalesce(offline_time_sxs, 0) offline_time_sxs
                 from (
-                        select id server_id, ip, isp from server_info where 1=1 ${company_id}
+                        select id server_id, ip, isp from server_info where 1=1 ${company_id_s}
                     ) a
                 left join 
                     (select server_id, count(id)*5 offline_time_uxs
                         from client_info_network_day 
                         where updated_at>${duration}
-                                and server_id in (select id from server_info where 1=1 ${company_id})
+                                and server_id in (select id from server_info where 1=1 ${company_id_s})
                         group by server_id
                     ) b using(server_id) 
                 left join 
                     (select server_id_src server_id, count(id) offline_time_sxs
                         from server_info_network_day 
                         where updated_time>${duration} 
-                                and server_id_src in (select id from server_info where 1=1 ${company_id})
+                                and server_id_src in (select id from server_info where 1=1 ${company_id_s})
                         group by server_id_src
                     ) c using(server_id) 
                 `;
@@ -1266,7 +1650,7 @@ module.exports = {
     },
 
     async getUsersComputer(req, res, next) {
-        var company_id = req.query.company_id_like ? ("and company_id=" + req.query.company_id_like) : "";
+        var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
         var total_count = 0;

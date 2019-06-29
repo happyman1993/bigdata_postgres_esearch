@@ -18,16 +18,17 @@ module.exports.query = function(text, params){
       }
       if(client == null)
       {
-        
+        console.log("client null ---------------------")
       }
-      client.query(text, (err, result) => {
-        release()
-        if (err) {
-          console.error('Error executing query', err.stack)
-          reject(err);
-        }
-        resolve(result);
-      })
+      else
+        client.query(text, (err, result) => {
+          release()
+          if (err) {
+            console.error('Error executing query', err.stack)
+            reject(err);
+          }
+          resolve(result);
+        })
     })
     
   })

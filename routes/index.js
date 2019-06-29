@@ -10,38 +10,42 @@ const staticsController = require('../controllers').statics;
 
 require('dotenv').config();
 
-router.get('/getDashboardStatics', staticsController.getDashboardStatics);
-router.get('/getUniqueUsersPerTime', staticsController.getUniqueUsersPerTime);
+router.get('/getDashboardStatics', Auth.verifyToken, staticsController.getDashboardStatics);
+router.get('/getUniqueUsersPerTime', Auth.verifyToken, staticsController.getUniqueUsersPerTime);
 
-router.get('/getOnlineUsercountPerGame', staticsController.getOnlineUsercountPerGame);
-router.get('/getUniqueLoggedUsercount', staticsController.getUniqueLoggedUsercount);
-router.get('/getPeakUsers', staticsController.getPeakUsers);
-router.get('/getUsersSegmentedByRegion', staticsController.getUsersSegmentedByRegion);
+router.get('/getOnlineUsercountPerGame', Auth.verifyToken, staticsController.getOnlineUsercountPerGame);
+router.get('/getOnlineUsercountPerCompany', Auth.verifyToken, staticsController.getOnlineUsercountPerCompany);
+router.get('/getUniqueLoggedUsercount', Auth.verifyToken, staticsController.getUniqueLoggedUsercount);
+router.get('/getPeakUsers', Auth.verifyToken, staticsController.getPeakUsers);
+router.get('/getUsersSegmentedByRegion', Auth.verifyToken, staticsController.getUsersSegmentedByRegion);
 
-router.get('/getOnlineHoursInGame', staticsController.getOnlineHoursInGame);
-router.get('/getRankingOfISPs', staticsController.getRankingOfISPs);
-router.get('/getListAvailableServers', staticsController.getListAvailableServers);
-router.get('/getBandwidthPerServer', staticsController.getBandwidthPerServer);
-router.get('/getNewOldExitUser', staticsController.getNewOldExitUser);
-router.get('/getCurrentPing', staticsController.getCurrentPing);
-router.get('/getPingImprovementPerRegion', staticsController.getPingImprovementPerRegion);
-router.get('/getAveragePacketLoss', staticsController.getAveragePacketLoss);
-router.get('/getOnlineUsersPerServer', staticsController.getOnlineUsersPerServer);
-router.get('/getAvailableUsedServers', staticsController.getAvailableUsedServers);
+router.get('/getOnlineHoursInGame', Auth.verifyToken, staticsController.getOnlineHoursInGame);
+router.get('/getRankingOfISPs', Auth.verifyToken, staticsController.getRankingOfISPs);
+router.get('/getListAvailableServers', Auth.verifyToken, staticsController.getListAvailableServers);
+router.get('/getBandwidthPerServer', Auth.verifyToken, staticsController.getBandwidthPerServer);
+router.get('/getBandwidthPerServerMT', Auth.verifyToken, staticsController.getBandwidthPerServerMT);
+router.get('/getBandwidthPerCompany', Auth.verifyToken, staticsController.getBandwidthPerCompany);
 
-router.get('/getInternetSpeedOfUser', staticsController.getInternetSpeedOfUser);
-router.get('/getInetAvgSpeedPerRegion', staticsController.getInetAvgSpeedPerRegion);
-router.get('/getPacketLossStaticSXC', staticsController.getPacketLossStaticSXC);
-router.get('/getPacketLossStaticSXS', staticsController.getPacketLossStaticSXS);
-router.get('/getServerOffline', staticsController.getServerOffline);
+router.get('/getNewOldExitUser', Auth.verifyToken, staticsController.getNewOldExitUser);
+router.get('/getCurrentPing', Auth.verifyToken, staticsController.getCurrentPing);
+router.get('/getPingImprovementPerRegion', Auth.verifyToken, staticsController.getPingImprovementPerRegion);
+router.get('/getAveragePacketLoss', Auth.verifyToken, staticsController.getAveragePacketLoss);
+router.get('/getOnlineUsersPerServer', Auth.verifyToken, staticsController.getOnlineUsersPerServer);
+router.get('/getAvailableUsedServers', Auth.verifyToken, staticsController.getAvailableUsedServers);
+
+router.get('/getInternetSpeedOfUser', Auth.verifyToken, staticsController.getInternetSpeedOfUser);
+router.get('/getInetAvgSpeedPerRegion', Auth.verifyToken, staticsController.getInetAvgSpeedPerRegion);
+router.get('/getPacketLossStaticSXC', Auth.verifyToken, staticsController.getPacketLossStaticSXC);
+router.get('/getPacketLossStaticSXS', Auth.verifyToken, staticsController.getPacketLossStaticSXS);
+router.get('/getServerOffline', Auth.verifyToken, staticsController.getServerOffline);
 router.get('/getConfigurableAlert', Auth.verifyToken, staticsController.getConfigurableAlert);
 router.get('/getMonitoringServerGameStatus', Auth.verifyToken, staticsController.getMonitoringServerGameStatus);
 
-router.get('/getAverageLoginTime', staticsController.getAverageLoginTime);
-router.get('/getHistoryUptime', staticsController.getHistoryUptime);
-router.get('/getServerOfflineTime', staticsController.getServerOfflineTime);
+router.get('/getAverageLoginTime', Auth.verifyToken, staticsController.getAverageLoginTime);
+router.get('/getHistoryUptime', Auth.verifyToken, staticsController.getHistoryUptime);
+router.get('/getServerOfflineTime', Auth.verifyToken, staticsController.getServerOfflineTime);
 
-router.get('/getuserscomputer', staticsController.getUsersComputer);
+router.get('/getuserscomputer', Auth.verifyToken, staticsController.getUsersComputer);
 
 // router.get('/countries', countryController.getCountries);
 // router.get('/getCountry/:id', countryController.getCountryById);

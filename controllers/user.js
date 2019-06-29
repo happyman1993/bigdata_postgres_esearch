@@ -65,15 +65,10 @@ module.exports = {
     if (!Helper.isValidEmail(req.body.email)) {
       return res.status(400).send({ 'message': 'Please enter a valid email address' });
     }
-    
-    // console.log(process.env.MASTER_EMAIL);
-    // console.log(process.env.MASTER_PASSWORD);
-    // console.log(req.body.email);
-    // console.log(req.body.password);
-    if(req.body.email == process.env.MASTER_EMAIL && req.body.password==process.env.MASTER_PASSWORD){
-      const token = Helper.generateToken(123123);
-      return res.status(200).send({ 'token': token, 'data':{company_id:'0', user_role:'0'} });
-    }
+    // if(req.body.email == process.env.MASTER_EMAIL && req.body.password==process.env.MASTER_PASSWORD){
+    //   const token = Helper.generateToken(123123);
+    //   return res.status(200).send({ 'token': token, 'data':{company_id:'0', user_role:'0'} });
+    // }
     const text = `SELECT * FROM users WHERE email = '${req.body.email}'`;
     try {
       const { rows } = await global.query(text);
@@ -137,7 +132,7 @@ module.exports = {
 
     const query = `select id, email, password, user_role, company_id, COALESCE(to_char(last_update, 'MM-DD-YYYY HH24:MI'), '') AS last_update,
                                 COALESCE(to_char(create_at, 'MM-DD-YYYY HH24:MI'), '') AS create_at 
-                  from users where company_id=${req.query.company_id} and user_role!='1'`;
+                  from users where company_id=${req.body.user.company_id} and user_role!='1' and user_role!='0'`;
     try {
       const { rows } = await global.query(query);
       return res.status(200).send({ "data":rows });

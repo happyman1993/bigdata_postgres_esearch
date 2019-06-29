@@ -13,7 +13,10 @@ module.exports = {
    */
   async getList(req, res) {
 
-    const query = `select a.id, name, email, password, COALESCE(to_char(a.last_update, 'MM-DD-YYYY HH24:MI'), '') AS last_update from company_info a left join users b on a.id=b.company_id `;
+    const query = `select a.id, name, email, password, COALESCE(to_char(a.last_update, 'MM-DD-YYYY HH24:MI'), '') AS last_update 
+                  from company_info a left join (
+                      select * from users  where user_role='1'
+                    ) b on a.id=b.company_id `;
     
     try {
       const { rows } = await global.query(query);
