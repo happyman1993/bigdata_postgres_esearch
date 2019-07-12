@@ -200,10 +200,11 @@ module.exports = {
                           not (id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='server'))`;
     }
     else{ // == game
+      var company_id = req.body.user.company_id!='0' ? (" a.company_id=" + req.body.user.company_id + " and ") : "";
       query_monitor_list = `select a.id, b.name gamename, ip, port, a.protocol, a.name from game_info_server a left join game_info b on a.game_id=b.id where 
-                      a.company_id=${req.body.user.company_id} and (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game'))`;
+                      ${company_id} (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game'))`;
       query_Items = `select a.id, b.name gamename, ip, port, a.protocol, a.name from game_info_server a left join game_info b on a.game_id=b.id where 
-                      a.company_id=${req.body.user.company_id} and not (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game'))`;
+                      ${company_id} not (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game'))`;
     }
   //select * from game_info where id = any(string_to_array( 
     // (select game_ids from users where id='b5cb4ad7-1721-40a5-9fb1-8dacdff42147'), ',' )::int[])

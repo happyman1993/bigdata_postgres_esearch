@@ -40,8 +40,8 @@ module.exports = {
                             (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))/1000>300000 ${company_id_s}
                         ) e using(id)
                         join (
-                            select 1 id, avg((packet_loss_without-packet_loss_with)*100/packet_loss_without) packet_loss_improvement,
-                                        avg((ping_without-ping_with)*100/ping_without) ping_improvement
+                            select 1 id, avg((packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer)) packet_loss_improvement,
+                                        avg((ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer)) ping_improvement
                             from public.client_info_network_day where client_id in (select id from client_info where 1=1 ${company_id})
                         ) f using(id)
                             `;
@@ -961,7 +961,7 @@ module.exports = {
                     select id client_id from client_info where 0=0 ${company_id}
                 ) a
                 left join(
-                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/ping_without improvement 
+                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer) improvement 
                     from public.client_info_network_day
                 ) b using(client_id)
                 ${orderby} ${limit} ${offset}`;
@@ -1012,7 +1012,7 @@ module.exports = {
                     select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where company_id=3
                 ) a
                 left join(
-                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/ping_without improvement 
+                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer) improvement 
                     from public.client_info_network_day
                 ) b using(client_id)
                 group by ${region}
@@ -1067,7 +1067,7 @@ module.exports = {
                     select id client_id from client_info where 0=0 ${company_id}
                 ) a
                 left join(
-                    select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/packet_loss_without improvement 
+                    select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer) improvement 
                     from public.client_info_network_day
                 ) b using(client_id)
                 ${orderby} ${limit} ${offset}`;
@@ -1077,7 +1077,7 @@ module.exports = {
                     select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where 0=0 ${company_id}
                 ) a
                 left join(
-                    select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/packet_loss_without improvement 
+                    select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer) improvement 
                     from public.client_info_network_day
                 ) b using(client_id)
                 group by ${region}
@@ -1367,7 +1367,7 @@ module.exports = {
         sql = `select servername, server_id, coalesce(packet_loss::INTEGER,0) packet_loss , coalesce(loss_pro::INTEGER, 0) loss_pro
                 from (select id server_id, name servername from server_info where 1=1 ${company_id_s}) a
                 left join (
-                    select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/avg(packet_count) loss_pro 
+                    select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/(avg(packet_count)+(avg(packet_count)=0)::integer) loss_pro 
                     from client_info_network_day group by server_id
                 ) b using(server_id)
 
@@ -1417,7 +1417,7 @@ module.exports = {
         sql = `select servername, coalesce(packet_loss::INTEGER,0) packet_loss , coalesce(loss_pro::INTEGER, 0) loss_pro
                 from (select id server_id_src , name servername from server_info where 1=1 ${company_id_s}) a
                 left join (
-                    select server_id_src, sum(packet_loss) packet_loss, avg(packet_loss)*100/avg(packet_count) loss_pro 
+                    select server_id_src, sum(packet_loss) packet_loss, avg(packet_loss)*100/(avg(packet_count)+(avg(packet_count)=0)::integer) loss_pro 
                     from server_info_network_day
                     where server_id_dest in (select id from server_info where 1=1 ${company_id_s}) 
                         and server_id_src in (select id from server_info where 1=1 ${company_id_s})
@@ -1448,11 +1448,11 @@ module.exports = {
 
         sql = `select servername, cpu, ram::integer, packetloss::integer
                 from (
-                    select server_id, name servername, cpu, memory_use*100/(memory_free+memory_use) ram 
+                    select server_id, name servername, cpu, memory_use*100/(memory_free+memory_use+((memory_free+memory_use)=0)::integer) ram 
                     from server_info a join server_info_machine b on a.id = b.server_id where 1=1 ${company_id_s}
                 ) b
                 left join (
-                    select server_id, avg(packet_loss_with*100/packet_count) packetloss from client_info_network_day 
+                    select server_id, avg(packet_loss_with*100/(packet_count+(packet_count=0)::integer)) packetloss from client_info_network_day 
                     where server_id in (select id from server_info where 1=1 ${company_id_s}) group by server_id
                 ) c using(server_id)`;
 
@@ -1483,9 +1483,9 @@ module.exports = {
         var groupby_type = req.query.type ? req.query.type : "isp";
         var user_count_pro = req.query.user_count_pro
 
-        sql = `select coalesce(client_count_alert*100.0/client_count, 0) user_count_pro, packetloss, namea
+        sql = `select coalesce(client_count_alert*100.0/(client_count+(client_count=0)::integer), 0) user_count_pro, packetloss, namea
                 from(
-                    select count(a.client_id) client_count, avg(packet_loss_with*100/packet_count)::numeric::integer packetloss, ${groupby_type} namea
+                    select count(a.client_id) client_count, avg(packet_loss_with*100/(packet_count+(packet_count=0)::integer))::numeric::integer packetloss, ${groupby_type} namea
                     from client_info_network_day a left join server_info b on a.server_id=b.id
                     where a.server_id in (select id from server_info where 1=1 ${company_id_s}) and a.client_id in (select id from client_info where 1=1 ${company_id})
                     group by namea
@@ -1494,7 +1494,7 @@ module.exports = {
                     select count(a.client_id) client_count_alert, ${groupby_type} namea
                     from client_info_network_day a left join server_info b on a.server_id=b.id
                     where a.server_id in (select id from server_info where 1=1 ${company_id_s}) and a.client_id in (select id from client_info where 1=1 ${company_id}) 
-                            and packet_loss_with*100/packet_count>${user_count_pro}
+                            and packet_loss_with*100/(packet_count+(packet_count=0)::integer)>${user_count_pro}
                     group by namea
                 ) b using(namea)`;
 

@@ -1,8 +1,7 @@
 CREATE TABLE public.company_info (
 	id serial NOT NULL,
 	"name" varchar(255) NOT NULL,
-	create_at timestamp NULL,
-	email varchar(50) NULL,
+	last_update timestamp NULL,
 	CONSTRAINT company_info_pk PRIMARY KEY (id)
 );
 CREATE INDEX company_info_id_idx ON public.company_info USING btree (id);
@@ -12,8 +11,8 @@ CREATE TABLE public.client_info (
 	email varchar(50) NOT NULL,
 	unique_id varchar(50) NOT NULL,
 	company_id int4 NULL,
-	last_update timestamp NOT NULL,
-	create_at timestamp NULL,
+	updated_at timestamp NOT NULL,
+	created_at timestamp NULL,
 	CONSTRAINT client_info_pk PRIMARY KEY (id),
 	CONSTRAINT client_info_company_info_fk FOREIGN KEY (company_id) REFERENCES company_info(id)
 );
@@ -232,7 +231,7 @@ CREATE TABLE public.server_info_network_day (
 CREATE INDEX server_info_network_day_id_idx ON public.server_info_network_day USING btree (id, server_id_src, server_id_dest);
 
 CREATE TABLE public.users (
-	id serial NOT NULL,
+	id uuid NOT NULL,
 	email varchar(100) NOT NULL,
 	"password" varchar(255) NOT NULL,
 	user_role varchar(500) NOT NULL DEFAULT '1',
@@ -240,7 +239,7 @@ CREATE TABLE public.users (
 	game_ids varchar NOT NULL DEFAULT '1',
 	company_id int4 NULL,
 	create_at timestamp NULL,
-	last_update timestamp NULL,
+	last_update timestamp NULL
 );
 CREATE INDEX users_id_idx ON public.users USING btree (id);
 
@@ -275,21 +274,64 @@ CREATE TABLE public.monitoring_server_results (
 );
 CREATE INDEX monitoring_server_results_id_idx ON public.monitoring_server_results USING btree (id);
 
+CREATE TABLE public.alerts_masterpanel (
+	id serial NOT NULL,
+	title varchar NOT NULL,
+	"content" varchar NOT NULL,
+	created_at timestamp NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.servers_x_company (
+	id serial NOT NULL,
+	server_id int4 NOT NULL,
+	company_id int4 NOT NULL,
+	CONSTRAINT servers_x_company_pk PRIMARY KEY (id)
+);
+
+
+CREATE TABLE public.customer_groups (
+	id serial NOT NULL,
+	"name" varchar NOT NULL,
+	customer_ids varchar NOT NULL
+);
+
+CREATE TABLE public.components_names (
+	id serial NOT NULL,
+	name varchar(255) DEFAULT NULL,
+	hash BIGINT default NULL,
+	CONSTRAINT components_names_pk PRIMARY KEY (id)
+);
+CREATE INDEX components_names_id_idx ON public.components_names USING btree (id);
+
+
+CREATE TABLE public.components_x_client (
+	id serial NOT NULL,
+	component_id int4  DEFAULT NULL,
+	client_id int4  DEFAULT NULL,
+	CONSTRAINT components_x_client_pk PRIMARY KEY (id)
+);
+CREATE INDEX components_x_client_id_idx ON public.components_x_client USING btree (id);
+
+
+
+
+
+
 
 
 INSERT INTO
-	public.company_info("name", create_at, email)
+	public.company_info("name", last_update)
 VALUES
-('aaa','2012-03-24 00:00:00.000','dickens.aliya@hotmail.com'),
-('bbb','2016-12-07 00:00:00.000','jenkins.gisselle@hotmail.com'),
-('ccc','2015-08-09 00:00:00.000','skemmer@cormier.com'),
-('ddd','2014-08-29 00:00:00.000','schmitt.leann@marquardt.com'),
-('eee','2014-05-17 00:00:00.000','adriana92@yahoo.com'),
-('fff','2014-11-25 00:00:00.000','zharber@powlowski.org'),
-('ggg','2009-05-24 00:00:00.000','claire86@yahoo.com'),
-('hhh','2009-05-24 00:00:00.000','josiah48@rolfson.net'),
-('iii','2009-05-24 00:00:00.000','beth06@tromp.com'),
-('jjj','2009-05-24 00:00:00.000','bradford62@hauck.biz');
+('aaa','2012-03-24 00:00:00.000'),
+('bbb','2016-12-07 00:00:00.000'),
+('ccc','2015-08-09 00:00:00.000'),
+('ddd','2014-08-29 00:00:00.000'),
+('eee','2014-05-17 00:00:00.000'),
+('fff','2014-11-25 00:00:00.000'),
+('ggg','2009-05-24 00:00:00.000'),
+('hhh','2009-05-24 00:00:00.000'),
+('iii','2009-05-24 00:00:00.000'),
+('jjj','2009-05-24 00:00:00.000');
 
 INSERT into
 	public.client_info
