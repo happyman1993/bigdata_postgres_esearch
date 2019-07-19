@@ -239,7 +239,8 @@ CREATE TABLE public.users (
 	game_ids varchar NOT NULL DEFAULT '1',
 	company_id int4 NULL,
 	create_at timestamp NULL,
-	last_update timestamp NULL
+	last_update timestamp NULL,
+	last_alert_id int4 NOT NULL DEFAULT 0
 );
 CREATE INDEX users_id_idx ON public.users USING btree (id);
 
@@ -278,8 +279,11 @@ CREATE TABLE public.alerts_masterpanel (
 	id serial NOT NULL,
 	title varchar NOT NULL,
 	"content" varchar NOT NULL,
+	groupid int4 NOT NULL,
 	created_at timestamp NOT NULL DEFAULT now()
+	CONSTRAINT alerts_masterpanel_pk PRIMARY KEY (id)
 );
+CREATE INDEX alerts_masterpanel_id_idx ON public.alerts_masterpanel USING btree (id);
 
 CREATE TABLE public.servers_x_company (
 	id serial NOT NULL,

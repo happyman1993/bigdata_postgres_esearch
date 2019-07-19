@@ -1444,7 +1444,7 @@ module.exports = {
      * @param {*} next 
      */
     async getServerOffline(req, res, next){
-        var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
+        var company_id_s = req.body.user.company_id!='0' ? `and a.id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
         sql = `select servername, cpu, ram::integer, packetloss::integer
                 from (
@@ -1453,7 +1453,7 @@ module.exports = {
                 ) b
                 left join (
                     select server_id, avg(packet_loss_with*100/(packet_count+(packet_count=0)::integer)) packetloss from client_info_network_day 
-                    where server_id in (select id from server_info where 1=1 ${company_id_s}) group by server_id
+                    where server_id in (select id from server_info a where 1=1 ${company_id_s}) group by server_id
                 ) c using(server_id)`;
 
         try{
