@@ -13,6 +13,7 @@ module.exports = {
     // console.log('verifyToken', req.password);
     const token = req.headers['x-access-token'];
     if(!token) {
+      console.log("Token is not provided");
       return res.status(400).send({ 'message': 'Token is not provided' });
     }
     try {
@@ -20,11 +21,13 @@ module.exports = {
       const text = `SELECT * FROM users WHERE id = '${decoded.userId}'`;
       const { rows } = await global.query(text);
       if(!rows[0]) {
+        console.log("The token you provided is invalid");
         return res.status(400).send({ 'message': 'The token you provided is invalid' });
       }
       req.body.user = rows[0];
       next();
     } catch(error) {
+      console.log(error);
       return res.status(400).send(error);
     }
   }

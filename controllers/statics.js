@@ -18,26 +18,26 @@ module.exports = {
         var sql_total = `select total_users_online, peak_users_online, unique_users, total_servers_online, total_servers_offline, packet_loss_improvement::integer, ping_improvement::integer
                         from (
                             select 1 id, count(*) as total_users_online from client_info where 
-                            (EXTRACT(EPOCH FROM (now()::timestamp - updated_at::timestamp)))/1000<30000000 ${company_id}
+                            (EXTRACT(EPOCH FROM (now()::timestamp - updated_at::timestamp)))<300 ${company_id}
                         ) a
                         join (
                             select 1 id, count(client_id) as peak_users_online 
-                                from public.client_game_info a where (a.update_at >= (current_date - interval '1000 day'))
+                                from public.client_game_info a where (a.update_at >= (current_date - interval '1 day'))
                                 and client_id in (select id from client_info where 1=1 ${company_id})
                         ) b using(id)
                         join (
                             select 1 id, count(y.client_id) unique_users from (select x.client_id from public.client_info_login as x
-                                where x.last_login > (current_date - interval '1000 day') and 
+                                where x.last_login > (current_date - interval '1 day') and 
                                         client_id in (select id from client_info where 1=1 ${company_id})
                                 group by x.client_id) as y
                         ) c using(id)
                         join (
                             select 1 id, count(*) as total_servers_online from server_info where 
-                            (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))/1000<=300000 ${company_id_s}
+                            (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))<=300 ${company_id_s}
                         ) d using(id)
                         join (
                             select 1 id, count(*) as total_servers_offline from server_info where 
-                            (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))/1000>300000 ${company_id_s}
+                            (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))>300 ${company_id_s}
                         ) e using(id)
                         join (
                             select 1 id, avg((packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer)) packet_loss_improvement,
@@ -139,7 +139,7 @@ module.exports = {
         var sql = `	select x.*, y.name as gamename from	(select a.game_id, count(c.id) as user_online_count from 
             ( (select * from public.client_game_info where 1=1 ${client_ids}) as a  
             left join 
-            (select b.id from public.client_info as b where (EXTRACT(EPOCH FROM (now()::timestamp - b.updated_at::timestamp)))/1000<30000000 ${company_id} ) as c 
+            (select b.id from public.client_info as b where (EXTRACT(EPOCH FROM (now()::timestamp - b.updated_at::timestamp)))<300 ${company_id} ) as c 
             on a.client_id = c.id) 
         group by a.game_id ) as x left join public.game_info as y on x.game_id = y.id  ${orderby} ${limit} ${offset}`;
 
@@ -179,7 +179,7 @@ module.exports = {
         var sql = `	select a.*, coalesce(c.count,0) count from company_info a 
                     left join 
                         (select b.company_id, count(b.id) count from public.client_info as b 
-                            where (EXTRACT(EPOCH FROM (now()::timestamp - b.updated_at::timestamp)))/1000<30000000 group by b.company_id ) as c 
+                            where (EXTRACT(EPOCH FROM (now()::timestamp - b.updated_at::timestamp)))<300 group by b.company_id ) as c 
                     on a.id = c.company_id  ${orderby} ${limit} ${offset}`;
 
         try{
@@ -410,9 +410,11 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select x.id, coalesce(x.hour,0) as today, coalesce(y.hour,0) as week, coalesce(z.hour,0) as month from 
-        (select c.id, sum(c.time_gameplay)/60 as hour from (select a.id, b.time_gameplay from (select id from client_info where 0=0 ${company_id}) as a left outer join 
-                    (select client_id, time_gameplay from client_game_info where update_at > (current_date)) as b on a.id=b.client_id) as c group by c.id) as x 
+        sql = `select x.id, x.email, coalesce(x.hour,0) as today, coalesce(y.hour,0) as week, coalesce(z.hour,0) as month from 
+        (select id, email, hour from client_info b left join
+            (select a.client_id, sum(a.time_gameplay)/60 as hour 
+            from (select client_id, time_gameplay from client_game_info where update_at > (current_date) and client_id in (select id from client_info where 1=1 ${company_id})) a 
+            group by a.client_id) c on b.id=c.client_id where 1=1 ${company_id}) as x 
    join (select c.id, sum(c.time_gameplay)/60 as hour from (select a.id, b.time_gameplay from (select id from client_info where 0=0 ${company_id}) as a left outer join 
                    (select client_id, time_gameplay from client_game_info where update_at BETWEEN NOW()::DATE-EXTRACT(DOW FROM NOW())::INTEGER-7 AND NOW()::DATE-EXTRACT(DOW from NOW())::INTEGER) as b on a.id=b.client_id) as c group by c.id) as y on x.id = y.id
    join (select c.id, sum(c.time_gameplay)/60 as hour from (select a.id, b.time_gameplay from (select id from client_info where 0=0 ${company_id}) as a left outer join 
@@ -459,7 +461,7 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : " order by count desc";
 
-        sql = `select ${ranking_option} as name, count(client_id) from client_info_login where 1=1 ${client_ids} group by ${ranking_option}
+        sql = `select ${ranking_option} as name, count(distinct(client_id)) from client_info_login where 1=1 ${client_ids} group by ${ranking_option}
                     ${orderby} ${limit} ${offset}`;
 
         try{
@@ -956,9 +958,9 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select client_id, ping_with currentping, ping_without oldping, improvement
+        sql = `select client_id, email, ping_with currentping, ping_without oldping, improvement
                 from (
-                    select id client_id from client_info where 0=0 ${company_id}
+                    select id client_id, email from client_info where 0=0 ${company_id}
                 ) a
                 left join(
                     select client_id, ping_with, ping_without, (ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer) improvement 
@@ -1062,9 +1064,9 @@ module.exports = {
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
         if(region == "")
-            sql = `select client_id as region, packet_loss_with currentloss, packet_loss_without oldloss, improvement
+            sql = `select email as region, packet_loss_with currentloss, packet_loss_without oldloss, improvement
                 from (
-                    select id client_id from client_info where 0=0 ${company_id}
+                    select id client_id, email from client_info where 0=0 ${company_id}
                 ) a
                 left join(
                     select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer) improvement 
@@ -1211,7 +1213,7 @@ module.exports = {
                 groupbyregion = 'city';
             }
         } 
-        sql = `select ${groupbyregion} regionname, count(client_id) usercount from client_info_login where 1=1 ${conditions} group by ${groupbyregion}`;
+        sql = `select ${groupbyregion} regionname, count(distinct(client_id)) usercount from client_info_login where 1=1 ${conditions} group by ${groupbyregion}`;
         console.log(sql);
         try{
             const { rows, rowCount } = await global.query(sql);
@@ -1249,8 +1251,8 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select a.client_id, isp, to_char((download+upload)/1024, 'FM999999.99999') internetspeed 
-                from (select id from client_info where 1=1 ${company_id}) c 
+        sql = `select a.client_id, c.email, isp, to_char((download+upload)/1024, 'FM999999.99999') internetspeed 
+                from (select id, email from client_info where 1=1 ${company_id}) c 
                 left join client_info_login a on c.id=a.client_id 
                 left join client_info_network b on a.client_id=b.client_id 
             ${orderby} ${limit} ${offset}`;
@@ -1523,7 +1525,7 @@ module.exports = {
                             server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='server') 
                             and game_server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='game')
                     ) 
-                select server_id, b.name sname, game_server_id, d.name gname, coalesce(c.name,'-') id_name, ping_mean, packet_loss, to_char(updated_at, 'MM-DD-YYYY  HH24:MI') updated_at
+                select server_id, b.name sname, game_server_id, d.name gname, coalesce(c.name,'-') id_name, ping_mean, packet_loss, to_char(updated_at, 'YYYY-MM-DD  HH24:MI') updated_at
                     from cte a left join server_info b on a.server_id=b.id 
                     left join game_info_server c on a.game_server_id=c.id
                     left join game_info d on c.game_id = d.id
@@ -1550,8 +1552,13 @@ module.exports = {
     async getAverageLoginTime(req, res, next){
         var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
-        sql = `select client_id, to_char(avg(last_login::time),'HH:MI') avgtime from client_info_login 
-                where client_id in (select id from client_info where 1=1 ${company_id}) group by client_id `;
+        sql = `select id, email, avgtime from client_info a 
+                left join 
+                    (select client_id, to_char(avg(last_login::time),'HH:MI') avgtime from client_info_login 
+                        where client_id in (select id from client_info where 1=1 ${company_id}) group by client_id) b
+                on a.id=b.client_id
+                where 1=1 ${company_id}
+                 `;
 
         try{
             const { rows, rowCount } = await global.query(sql);
@@ -1578,16 +1585,16 @@ module.exports = {
             sql = `select string_agg(isp, ', ') isps
                     from (
                         select client_id from client_info_server_network 
-                        where server_id = ${req.query.server_id} and to_char(last_update, 'MM-DD-YYYY HH24:MI')='${req.query.packet_loss_time}'
+                        where server_id = ${req.query.server_id} and to_char(last_update, 'YYYY-MM-DD HH24:MI')='${req.query.packet_loss_time}'
                     ) a
                     left join (
                         select client_id, isp from client_info_login ) b using(client_id)`;
         }
         
         else
-            sql = `select server_id, packet_loss_times, ip, isp 
+            sql = `select server_id, name, packet_loss_times, ip, isp 
                 from 
-                    (select server_id, string_agg(distinct(to_char(last_update, 'MM-DD-YYYY HH24:MI')), ',') packet_loss_times 
+                    (select server_id, string_agg(distinct(to_char(last_update, 'YYYY-MM-DD HH24:MI')), ',') packet_loss_times 
                         from client_info_server_network group by server_id)a 
                 left join server_info b on a.server_id=b.id where 1=1 ${company_id_s}`;
 
@@ -1621,9 +1628,9 @@ module.exports = {
             }
         }
 
-        sql = `select server_id, ip, isp, coalesce(offline_time_uxs, 0) offline_time_uxs , coalesce(offline_time_sxs, 0) offline_time_sxs
+        sql = `select server_id, servername, ip, isp, coalesce(offline_time_uxs, 0) offline_time_uxs , coalesce(offline_time_sxs, 0) offline_time_sxs
                 from (
-                        select id server_id, ip, isp from server_info where 1=1 ${company_id_s}
+                        select id server_id, name servername, ip, isp from server_info where 1=1 ${company_id_s}
                     ) a
                 left join 
                     (select server_id, count(id)*5 offline_time_uxs

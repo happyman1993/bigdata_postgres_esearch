@@ -14,7 +14,7 @@ CREATE TABLE public.client_info (
 	updated_at timestamp NOT NULL,
 	created_at timestamp NULL,
 	CONSTRAINT client_info_pk PRIMARY KEY (id),
-	CONSTRAINT client_info_company_info_fk FOREIGN KEY (company_id) REFERENCES company_info(id)
+	CONSTRAINT client_info_company_info_fk FOREIGN KEY (company_id) REFERENCES company_info(id) ON DELETE CASCADE
 );
 CREATE INDEX client_info_id_idx ON public.client_info USING btree (id);
 
@@ -59,7 +59,7 @@ CREATE TABLE public.process_info (
 	game_id int4 NULL,
 	"name" varchar(50) NULL,
 	CONSTRAINT process_info_pk PRIMARY KEY (id),
-	CONSTRAINT process_info_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id)
+	CONSTRAINT process_info_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id) ON DELETE CASCADE
 );
 CREATE INDEX process_info_game_id_idx ON public.process_info USING btree (game_id);
 CREATE UNIQUE INDEX process_info_id_idx ON public.process_info USING btree (id);
@@ -72,9 +72,9 @@ CREATE TABLE public.client_game_info (
 	time_gameplay int4 NULL,
 	update_at timestamp NULL,
 	CONSTRAINT client_game_info_pk PRIMARY KEY (id),
-	CONSTRAINT client_game_info_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id),
-	CONSTRAINT client_game_info_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id),
-	CONSTRAINT client_game_info_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
+	CONSTRAINT client_game_info_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id) ON DELETE CASCADE,
+	CONSTRAINT client_game_info_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id) ON DELETE CASCADE,
+	CONSTRAINT client_game_info_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id) ON DELETE CASCADE
 );
 CREATE INDEX client_game_info_id_idx ON public.client_game_info USING btree (id, client_id, game_id, server_id);
 
@@ -85,8 +85,8 @@ CREATE TABLE public.client_info_day (
 	time_gameplay int4 NULL,
 	last_update timestamp NULL,
 	CONSTRAINT client_info_day_pk PRIMARY KEY (id),
-	CONSTRAINT client_info_day_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id),
-	CONSTRAINT client_info_day_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id)
+	CONSTRAINT client_info_day_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id) ON DELETE CASCADE,
+	CONSTRAINT client_info_day_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id) ON DELETE CASCADE
 );
 CREATE INDEX client_info_day_id_idx ON public.client_info_day USING btree (id, client_id, game_id);
 
@@ -101,7 +101,7 @@ CREATE TABLE public.client_info_login (
 	city varchar(50) NULL,
 	isp varchar(50) NULL,
 	CONSTRAINT client_info_login_pk PRIMARY KEY (id),
-	CONSTRAINT client_info_login_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id)
+	CONSTRAINT client_info_login_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id) ON DELETE CASCADE
 );
 CREATE INDEX client_info_login_id_idx ON public.client_info_login USING btree (id, client_id);
 
@@ -114,7 +114,7 @@ CREATE TABLE public.client_info_network (
 	pps_out int4 NULL,
 	last_update timestamp NULL,
 	CONSTRAINT client_info_network_pk PRIMARY KEY (id),
-	CONSTRAINT client_info_network_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id)
+	CONSTRAINT client_info_network_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id) ON DELETE CASCADE
 );
 
 CREATE TABLE public.client_info_network_day (
@@ -131,8 +131,8 @@ CREATE TABLE public.client_info_network_day (
 	packet_count int4 NULL,
 	updated_at timestamp NULL,
 	CONSTRAINT client_info_network_day_pk PRIMARY KEY (id),
-	CONSTRAINT client_info_network_day_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id),
-	CONSTRAINT client_info_network_day_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
+	CONSTRAINT client_info_network_day_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id) ON DELETE CASCADE,
+	CONSTRAINT client_info_network_day_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id) ON DELETE CASCADE
 );
 CREATE INDEX client_info_network_day_id_idx ON public.client_info_network_day USING btree (id, client_id, server_id);
 
@@ -143,8 +143,8 @@ CREATE TABLE public.client_info_server_network (
 	packet_loss int4 NOT NULL,
 	connection_lost int4 NOT NULL,
 	last_update timestamp NOT NULL,
-	CONSTRAINT client_info_server_network_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id),
-	CONSTRAINT client_info_server_network_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
+	CONSTRAINT client_info_server_network_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id) ON DELETE CASCADE,
+	CONSTRAINT client_info_server_network_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id) ON DELETE CASCADE
 );
 CREATE INDEX client_info_server_network_client_id_idx ON public.client_info_server_network USING btree (id, client_id, server_id);
 
@@ -158,8 +158,8 @@ CREATE TABLE public.game_info_network_day (
 	kbps_out int4 NULL,
 	update_at timestamp NULL,
 	CONSTRAINT game_info_network_day_pk PRIMARY KEY (id),
-	CONSTRAINT game_info_network_day_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id),
-	CONSTRAINT game_info_network_day_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id)
+	CONSTRAINT game_info_network_day_client_info_fk FOREIGN KEY (client_id) REFERENCES client_info(id) ON DELETE CASCADE,
+	CONSTRAINT game_info_network_day_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id) ON DELETE CASCADE
 );
 CREATE INDEX game_info_network_day_id_idx ON public.game_info_network_day USING btree (id, client_id, game_id);
 
@@ -174,8 +174,8 @@ CREATE TABLE public.game_info_server (
 	"name" varchar(255) NULL,
 	created_at timestamp NULL,
 	CONSTRAINT game_info_server_pk PRIMARY KEY (id),
-	CONSTRAINT game_info_server_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id),
-	CONSTRAINT game_info_server_process_info_fk FOREIGN KEY (process_id) REFERENCES process_info(id)
+	CONSTRAINT game_info_server_game_info_fk FOREIGN KEY (game_id) REFERENCES game_info(id) ON DELETE CASCADE,
+	CONSTRAINT game_info_server_process_info_fk FOREIGN KEY (process_id) REFERENCES process_info(id) ON DELETE CASCADE
 );
 CREATE INDEX game_info_server_id_idx ON public.game_info_server USING btree (id, game_id, process_id);
 
@@ -200,7 +200,7 @@ CREATE TABLE public.server_info_machine (
 	last_update timestamp NULL,
 	monitor_version varchar NULL,
 	CONSTRAINT server_info_machine_pk PRIMARY KEY (id),
-	CONSTRAINT server_info_machine_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
+	CONSTRAINT server_info_machine_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX server_info_machine_id_idx ON public.server_info_machine USING btree (id);
 
@@ -214,7 +214,7 @@ CREATE TABLE public.server_info_machine_logs (
 	createdAt timestamp NULL,
 	updatedAt timestamp NULL,
 	CONSTRAINT server_info_machine_logs_pk PRIMARY KEY (id),
-	CONSTRAINT server_info_machine_logs_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id)
+	CONSTRAINT server_info_machine_logs_server_info_fk FOREIGN KEY (server_id) REFERENCES server_info(id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX server_info_machine_logs_id_idx ON public.server_info_machine_logs USING btree (id);
 
@@ -225,8 +225,8 @@ CREATE TABLE public.server_info_network_day (
 	packet_loss int4 NULL,
 	packet_count int4 NULL,
 	updated_time timestamp NULL,
-	CONSTRAINT newtable_server_info_fk FOREIGN KEY (server_id_src) REFERENCES server_info(id),
-	CONSTRAINT newtable_server_info_fk_1 FOREIGN KEY (server_id_dest) REFERENCES server_info(id)
+	CONSTRAINT newtable_server_info_fk FOREIGN KEY (server_id_src) REFERENCES server_info(id) ON DELETE CASCADE,
+	CONSTRAINT newtable_server_info_fk_1 FOREIGN KEY (server_id_dest) REFERENCES server_info(id) ON DELETE CASCADE
 );
 CREATE INDEX server_info_network_day_id_idx ON public.server_info_network_day USING btree (id, server_id_src, server_id_dest);
 
