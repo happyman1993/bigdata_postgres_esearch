@@ -958,13 +958,20 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select client_id, email, ping_with currentping, ping_without oldping, improvement
+        sql = `select client_id, email, 
+                    case when ping_with>5000 then '5000>'
+                        else ping_with::text end
+                        as currentping, 
+                    case when ping_without>5000 then '5000>'
+                        else ping_without::text end
+                        as oldping,
+                    improvement
                 from (
                     select id client_id, email from client_info where 0=0 ${company_id}
                 ) a
-                left join(
-                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer) improvement 
-                    from public.client_info_network_day
+                inner join(
+                    select client_id, ping_with, ping_without, (ping_without)*100/(ping_with+(ping_with=0)::integer) improvement 
+                    from public.client_info_network_day where ping_with is not null and ping_without is not null
                 ) b using(client_id)
                 ${orderby} ${limit} ${offset}`;
 
@@ -988,8 +995,8 @@ module.exports = {
     async getPingImprovementPerRegion(req, res, next){
         var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
-        var region = req.query.regiontype_like ? req.query.regiontype_like:"country";
-        var sql_total = `select count(*) from (select ${region} from client_info a left join client_info_login b on a.id=b.client_id where 0=0 ${company_id} group by ${region}) k`;
+        var region = req.query.regiontype_like ? req.query.regiontype_like:"isp";
+        var sql_total = `select count(*) from (select ${region} from client_info a left join client_info_login b on a.id=b.client_id where  ${region}!='' ${company_id} group by ${region}) k`;
 
         
         // console.log(sql_total);
@@ -1003,23 +1010,25 @@ module.exports = {
             console.log(sql_total);
             return res.status(400).send(error);
         }
+        console.log(sql_total);
 
         page_no = parseInt(req.query._page, 10);
         var limit = "limit " + req.query._limit;
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select avg(ping_with)::numeric::integer currentping, avg(ping_without)::numeric::integer oldping, avg(improvement)::numeric::integer improvement, ${region} region
+        sql = `select avg(coalesce(ping_with,0))::numeric::integer currentping, avg(coalesce(ping_without,0))::numeric::integer oldping, avg(coalesce(improvement,0))::numeric::integer improvement, ${region} region
                 from (
-                    select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where company_id=3
+                    select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where country!='' ${company_id}
                 ) a
-                left join(
+                inner join(
                     select client_id, ping_with, ping_without, (ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer) improvement 
-                    from public.client_info_network_day
+                    from public.client_info_network_day where ping_with is not null and ping_without is not null
                 ) b using(client_id)
                 group by ${region}
                 ${orderby} ${limit} ${offset}`;
 
+                console.log(sql);
         try{
             const { rows, rowCount } = await global.query(sql);
             return res.status(200).send({"data":rows, "x_total_count": total_count});
@@ -1126,7 +1135,7 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select server_id, name servername, client_tcp+client_udp count from server_info x join server_info_machine y on x.id=y.server_id 
+        sql = `select server_id, name servername, client_tcp, client_udp, client_tcp+client_udp totals from server_info x join server_info_machine y on x.id=y.server_id 
                 where 1=1 ${company_id_s}
             ${orderby} ${limit} ${offset}`;
 
@@ -1151,11 +1160,14 @@ module.exports = {
     async getAvailableUsedServers(req, res, next){
         var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
-        sql = `select availables, uses
+        sql = `select availables, uses, totals
                 from (
+                    select 1 id, count(*) totals from server_info where 1=1 ${company_id_s}
+                ) d
+                join (
                     select 1 id, count(*) availables from server_info x join server_info_machine y on x.id=y.server_id 
                     where cpu>0 and memory_use>0 and memory_free>0 ${company_id_s}
-                ) b
+                ) b using(id)
                 join (
                     select 1 id, count(*) uses 
                     from (select client_tcp+client_udp count1 
@@ -1251,10 +1263,13 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select a.client_id, c.email, isp, to_char((download+upload)/1024, 'FM999999.99999') internetspeed 
-                from (select id, email from client_info where 1=1 ${company_id}) c 
-                left join client_info_login a on c.id=a.client_id 
-                left join client_info_network b on a.client_id=b.client_id 
+        sql = `select c.id, c.email, to_char((download+upload)/1024, '9990d9999') internetspeed, isp
+                from (select id, email from client_info where 0=0 ${company_id}) c
+                left join client_info_network b on c.id=b.client_id
+                left join (
+                    select distinct on (client_id) client_id, isp from client_info_login
+		                order by client_id, last_login desc
+                    ) a on c.id=a.client_id
             ${orderby} ${limit} ${offset}`;
 
         try{
@@ -1321,7 +1336,7 @@ module.exports = {
         sql = `select ${groupbyregion} regionname, to_char(avg(download)/1024, 'FM999999.99999') download, to_char(avg(upload)/1024, 'FM999999.99999') upload
                 from (select id from client_info where 1=1 ${company_id}) c 
                 inner join (select * from client_info_login where 1=1 ${conditions}) a on c.id=a.client_id 
-                left join client_info_network b on a.client_id=b.client_id 
+                inner join client_info_network b on a.client_id=b.client_id 
                 group by ${groupbyregion}`;
 
         console.log(sql);
@@ -1553,7 +1568,7 @@ module.exports = {
         var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         sql = `select id, email, avgtime from client_info a 
-                left join 
+                inner join 
                     (select client_id, to_char(avg(last_login::time),'HH:MI') avgtime from client_info_login 
                         where client_id in (select id from client_info where 1=1 ${company_id}) group by client_id) b
                 on a.id=b.client_id
