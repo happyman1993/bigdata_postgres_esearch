@@ -1383,13 +1383,12 @@ module.exports = {
 
         sql = `select servername, server_id, coalesce(packet_loss::INTEGER,0) packet_loss , coalesce(loss_pro::INTEGER, 0) loss_pro
                 from (select id server_id, name servername from server_info where 1=1 ${company_id_s}) a
-                left join (
-                    select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with)*100/(avg(packet_count)+(avg(packet_count)=0)::integer) loss_pro 
-                    from client_info_network_day group by server_id
+                inner join (
+                    select server_id, avg(packet_loss_with) packet_loss, avg(packet_loss_with*100/packet_count) loss_pro 
+                    from client_info_network_day where packet_count is not null and packet_count!=0 group by server_id
                 ) b using(server_id)
 
              ${orderby} ${limit} ${offset}`;
-
         try{
             const { rows, rowCount } = await global.query(sql);
             return res.status(200).send({"data":rows, "x_total_count": total_count});
