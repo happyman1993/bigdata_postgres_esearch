@@ -203,8 +203,8 @@ module.exports = {
       var company_id = req.body.user.company_id!='0' ? (" a.company_id=" + req.body.user.company_id + " and ") : "";
       query_monitor_list = `select a.id, b.name gamename, ip, port, a.protocol, a.name from game_info_server a left join game_info b on a.game_id=b.id where 
                       ${company_id} (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game'))`;
-      query_Items = `select a.id, b.name gamename, ip, port, a.protocol, a.name from game_info_server a left join game_info b on a.game_id=b.id where 
-                      ${company_id} not (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game'))`;
+      // query_Items = `select a.id, b.name gamename, ip, port, a.protocol, a.name from game_info_server a left join game_info b on a.game_id=b.id where 
+      //                 ${company_id} not (a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game'))`;
     }
   //select * from game_info where id = any(string_to_array( 
     // (select game_ids from users where id='b5cb4ad7-1721-40a5-9fb1-8dacdff42147'), ',' )::int[])
@@ -220,6 +220,82 @@ module.exports = {
     try {
       const { rows } = await global.query(query_Items);
       return res.status(200).send({ 'monitors':rows_monitor, 'items': rows});
+    } catch(error) {
+      console.log(query_Items);
+      return res.status(400).send(error);
+    }
+  },
+
+
+  /**
+   * Get Monitor Server/Game List
+   * @param {object} req 
+   * @param {object} res
+   * @returns {object} reflection object 
+   */
+  async getGames(req, res) {
+    let query_Items = `select id, name from game_info where name is not null and name != '' order by name`;
+
+    try {
+      const { rows } = await global.query(query_Items);
+      return res.status(200).send({ 'items':rows });
+    } catch(error) {
+      console.log(query_Items);
+      return res.status(400).send(error);
+    }
+  },
+
+
+  /**
+   * Get Process Names for a game
+   * @param {object} req 
+   * @param {object} res
+   * @returns {object} reflection object 
+   */
+  async getProcessNames(req, res) {
+    var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
+
+    let query_Items = `select process_id, b."name"
+                        from 
+                          (select process_id from game_info_server where game_id=${req.query.game_id} ${company_id} group by process_id) a
+                        left join
+                          process_info b
+                        on a.process_id=b.id`;
+
+    try {
+      const { rows } = await global.query(query_Items);
+      return res.status(200).send({ 'items':rows });
+    } catch(error) {
+      console.log(query_Items);
+      return res.status(400).send(error);
+    }
+  },
+
+    /**
+   * Get IPs of Process
+   * @param {object} req 
+   * @param {object} res
+   * @returns {object} reflection object 
+   */
+  async getInfosOfGameProcess(req, res) {
+    var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
+
+    // let query_Items = `select * from game_info_server where game_id=${req.query.game_id} and process_id=game_id=${req.query.game_id} ${company_id}`;
+
+      query_Items = `select a.id, b.name gamename, ip, port, a.protocol, a.name 
+                      from game_info_server a 
+                      left join game_info b 
+                      on a.game_id=b.id 
+                      where 
+                        game_id=${req.query.game_id} and process_id=${req.query.process_id} 
+                        and not (
+                            a.id in (select server_game_id from monitor_server_game where user_id='${req.body.user.id}' and type='game')
+                          )
+                        ${company_id} `;
+
+    try {
+      const { rows } = await global.query(query_Items);
+      return res.status(200).send({ 'items':rows });
     } catch(error) {
       console.log(query_Items);
       return res.status(400).send(error);

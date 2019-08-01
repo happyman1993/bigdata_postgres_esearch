@@ -970,12 +970,13 @@ module.exports = {
                     select id client_id, email from client_info where 0=0 ${company_id}
                 ) a
                 inner join(
-                    select client_id, ping_with, ping_without, (ping_without)*100/(ping_with+(ping_with=0)::integer) improvement 
+                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer) improvement 
                     from public.client_info_network_day where ping_with is not null and ping_without is not null
                 ) b using(client_id)
                 ${orderby} ${limit} ${offset}`;
 
         try{
+            console.log(sql);
             const { rows, rowCount } = await global.query(sql);
             return res.status(200).send({"data":rows, "x_total_count": total_count});
         }catch(error){
@@ -1022,8 +1023,9 @@ module.exports = {
                     select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where country!='' ${company_id}
                 ) a
                 inner join(
-                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer) improvement 
-                    from public.client_info_network_day where ping_with is not null and ping_without is not null
+                    select client_id, avg(ping_with)::numeric::integer ping_with, avg(ping_without)::numeric::integer ping_without, 
+                            avg((ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer))::numeric::integer improvement
+                    from public.client_info_network_day where ping_with is not null and ping_without is not null group by client_id
                 ) b using(client_id)
                 group by ${region}
                 ${orderby} ${limit} ${offset}`;
@@ -1050,9 +1052,23 @@ module.exports = {
         var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
         var region = req.query.regiontype_like ? req.query.regiontype_like:"";
-        var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
+        var sql_total = `select count(*) from (select client_id
+                        from (
+                            select id client_id, email from client_info where 0=0 ${company_id}
+                        ) a
+                        inner join(
+                            select client_id 
+                            from public.client_info_network_day where packet_loss_with is not null and packet_loss_without is not null and packet_loss_with!=0 and packet_loss_without != 0 group by client_id
+                        ) b using(client_id)) xx`;
         if(region != "")
-            sql_total = `select count(*) from (select ${region} from client_info a left join client_info_login b on a.id=b.client_id where 0=0 ${company_id} group by ${region}) k`;
+            sql_total = `select count(*) from (select count(${region}) count
+            from (
+                select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where 0=0 ${company_id}
+            ) a
+            inner join(
+                select client_id from public.client_info_network_day where packet_loss_with is not null and packet_loss_without is not null and packet_loss_with!=0 and packet_loss_without != 0
+            ) b using(client_id)
+            group by ${region}) xx`;
 
 
         
@@ -1077,9 +1093,10 @@ module.exports = {
                 from (
                     select id client_id, email from client_info where 0=0 ${company_id}
                 ) a
-                left join(
-                    select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer) improvement 
-                    from public.client_info_network_day
+                inner join(
+                    select client_id, avg(packet_loss_with)::numeric::integer packet_loss_with, avg(packet_loss_without)::numeric::integer packet_loss_without, 
+                                avg((packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer))::numeric::integer improvement 
+                    from public.client_info_network_day where packet_loss_with is not null and packet_loss_without is not null and packet_loss_with!=0 and packet_loss_without != 0 group by client_id
                 ) b using(client_id)
                 ${orderby} ${limit} ${offset}`;
         else
@@ -1087,9 +1104,9 @@ module.exports = {
                 from (
                     select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where 0=0 ${company_id}
                 ) a
-                left join(
-                    select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer) improvement 
-                    from public.client_info_network_day
+                inner join(
+                    select client_id, packet_loss_with, packet_loss_without, (packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer)::numeric::integer improvement 
+                    from public.client_info_network_day where packet_loss_with is not null and packet_loss_without is not null and packet_loss_with!=0 and packet_loss_without != 0
                 ) b using(client_id)
                 group by ${region}
                 ${orderby} ${limit} ${offset}`;
@@ -1118,9 +1135,9 @@ module.exports = {
         if(req.body.user.company_id!='0')
             sql_total = `select count(id) from servers_x_company where company_id=${req.body.user.company_id}`;
         else
-            sql_total = `select count(id) from server_info`
+            sql_total = `select count(id) from server_info_machine`
 
-        
+        console.log(sql_total);
         var total_count = 0;
         try{
             const { rows, rowCount } = await global.query(sql_total);

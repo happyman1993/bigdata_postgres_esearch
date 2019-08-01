@@ -20,4 +20,9 @@ router.get('/users', Auth.verifyToken, UserWithDb.getList);//Auth.verifyToken,
 router.post('/users/monitor_server_game_list', Auth.verifyToken, UserWithDb.updateMonitorServers_Games);
 router.get('/users/monitor_server_game_list', Auth.verifyToken, UserWithDb.getMonitorServers_Games);
 router.post('/users/update_gameinfo', Auth.verifyToken, UserWithDb.update_gameinfo);
+
+router.get('/users/games', Auth.verifyToken, UserWithDb.getGames);
+router.get('/users/getInfosOfGameProcess', Auth.verifyToken, UserWithDb.getInfosOfGameProcess);
+router.get('/users/getProcessNames', Auth.verifyToken, UserWithDb.getProcessNames);
+
 module.exports = router;
