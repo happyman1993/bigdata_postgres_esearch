@@ -941,7 +941,11 @@ module.exports = {
     async getCurrentPing(req, res, next){
         var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
 
-        var sql_total = `select count(*) from client_info where 0=0 ${company_id}`;
+        var sql_total = `select count(*) 
+                        from 
+                            (select client_id from public.client_info_network_day where ping_with is not null and ping_without is not null group by client_id) a`;
+        if(company_id != "")
+            sql_total += ` where a.client_id in (select id from client_info where 1 ${company_id})`
         // console.log(sql_total);
         
         var total_count = 0;
@@ -959,19 +963,22 @@ module.exports = {
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
         sql = `select client_id, email, 
-                    case when ping_with>5000 then '5000>'
+                    case when ping_with>2000 then '2000>'
                         else ping_with::text end
                         as currentping, 
-                    case when ping_without>5000 then '5000>'
+                    case when ping_without>2000 then '2000>'
                         else ping_without::text end
                         as oldping,
-                    improvement
+                    case when improvement>0 then improvement
+                        else '0' end
+                        as improvement
                 from (
                     select id client_id, email from client_info where 0=0 ${company_id}
                 ) a
                 inner join(
-                    select client_id, ping_with, ping_without, (ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer) improvement 
-                    from public.client_info_network_day where ping_with is not null and ping_without is not null
+                    select client_id, avg(ping_with)::numeric::integer ping_with, avg(ping_without)::numeric::integer ping_without,
+                        avg((ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer))::numeric::integer improvement 
+                    from public.client_info_network_day where ping_with is not null and ping_without is not null group by client_id
                 ) b using(client_id)
                 ${orderby} ${limit} ${offset}`;
 
@@ -1018,17 +1025,30 @@ module.exports = {
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
-        sql = `select avg(coalesce(ping_with,0))::numeric::integer currentping, avg(coalesce(ping_without,0))::numeric::integer oldping, avg(coalesce(improvement,0))::numeric::integer improvement, ${region} region
+        sql = `select region,
+                case when improvement>0 then improvement
+                    else 0 end
+                    as improvement,
+                case when currentping<=2000 then currentping::text
+                    else '2000 >' end
+                    as currentping,
+                case when oldping<=2000 then oldping::text
+                    else '2000 >' end
+                    as oldping 
                 from (
-                    select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where country!='' ${company_id}
-                ) a
-                inner join(
-                    select client_id, avg(ping_with)::numeric::integer ping_with, avg(ping_without)::numeric::integer ping_without, 
-                            avg((ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer))::numeric::integer improvement
-                    from public.client_info_network_day where ping_with is not null and ping_without is not null group by client_id
-                ) b using(client_id)
-                group by ${region}
-                ${orderby} ${limit} ${offset}`;
+                    select avg(coalesce(ping_with,0))::numeric::integer currentping, avg(coalesce(ping_without,0))::numeric::integer oldping, 
+                        avg(coalesce(improvement,0))::numeric::integer improvement, 
+                        ${region} region
+                    from (
+                        select client_id, ${region} from client_info x left join client_info_login y on x.id=y.client_id where country!='' ${company_id}
+                    ) a
+                    inner join(
+                        select client_id, ping_with, ping_without, (ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer) improvement
+                        from public.client_info_network_day where ping_with is not null and ping_without is not null
+                    ) b using(client_id)
+                    group by ${region}
+                    ${orderby} ${limit} ${offset}
+                ) x`;
 
                 console.log(sql);
         try{
