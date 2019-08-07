@@ -210,6 +210,7 @@ module.exports = {
     // (select game_ids from users where id='b5cb4ad7-1721-40a5-9fb1-8dacdff42147'), ',' )::int[])
 
     let rows_monitor
+    console.log(query_monitor_list);
     try {
       const { rows } = await global.query(query_monitor_list);
       rows_monitor = rows;

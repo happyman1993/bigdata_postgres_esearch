@@ -1,5 +1,10 @@
 var global = require("../services/global");
 
+var CONST_SERVERGAME = 0
+var CONST_SETALERT = 1
+var CONST_SERVERSTATUS = 2
+var alert_list = [{},{},{}];
+
 
 module.exports = {
     /**
@@ -1370,7 +1375,7 @@ module.exports = {
 
         // sql = `select ${groupbyregion} regionname, count(client_id) usercount from client_info_login where 1=1 ${conditions} group by ${groupbyregion}`;
 
-        sql = `select ${groupbyregion} regionname, to_char(avg(download)/1024, 'FM999999.99999') download, to_char(avg(upload)/1024, 'FM999999.99999') upload
+        sql = `select ${groupbyregion} regionname, to_char(avg(download)/1024, '999990d99999') download, to_char(avg(upload)/1024, '9999990d99999') upload
                 from (select id from client_info where 1=1 ${company_id}) c 
                 inner join (select * from client_info_login where 1=1 ${conditions}) a on c.id=a.client_id 
                 inner join client_info_network b on a.client_id=b.client_id 
@@ -1499,7 +1504,7 @@ module.exports = {
     async getServerOffline(req, res, next){
         var company_id_s = req.body.user.company_id!='0' ? `and a.id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
-        sql = `select servername, cpu, ram::integer, packetloss::integer
+        sql = `select server_id, servername, cpu, ram::integer, packetloss::integer
                 from (
                     select server_id, name servername, cpu, memory_use*100/(memory_free+memory_use+((memory_free+memory_use)=0)::integer) ram 
                     from server_info a join server_info_machine b on a.id = b.server_id where 1=1 ${company_id_s}
@@ -1511,7 +1516,55 @@ module.exports = {
 
         try{
             const { rows, rowCount } = await global.query(sql);
-            return res.status(200).send({"data":rows, "x_total_count": rowCount});
+
+        // console.log(alert_list);
+
+            var resp_alerts = {}
+
+            for(let i=0; i<rowCount; i++){
+                let key = req.body.user.id + '_' + rows[i]['server_id'];
+
+                let bExist = alert_list[CONST_SERVERSTATUS].hasOwnProperty(key+'cpu')
+                // console.log(rows[i]['ping_mean'], req.query.ping_mean_threshold)
+                if(parseInt(rows[i]['cpu']) > parseInt(req.query.cpu_threshold))
+                {
+                    if(!bExist){
+                        alert_list[CONST_SERVERSTATUS][key+'cpu'] = 1
+                        resp_alerts[rows[i]['server_id'] + 'cpu'] = 1;
+                    }
+                }
+                else if(bExist){
+                    delete alert_list[CONST_SERVERSTATUS][key+'cpu']
+                }
+
+                bExist = alert_list[CONST_SERVERSTATUS].hasOwnProperty(key+'ram')
+                // console.log(rows[i]['ping_mean'], req.query.ping_mean_threshold)
+                if(parseInt(rows[i]['ram']) > parseInt(req.query.ram_threshold))
+                {
+                    if(!bExist){
+                        alert_list[CONST_SERVERSTATUS][key+'ram'] = 1
+                        resp_alerts[rows[i]['server_id'] + 'ram'] = 1;
+                    }
+                }
+                else if(bExist){
+                    delete alert_list[CONST_SERVERSTATUS][key+'ram']
+                }
+
+                bExist = alert_list[CONST_SERVERSTATUS].hasOwnProperty(key+'ploss')
+                // console.log(rows[i]['ping_mean'], req.query.ping_mean_threshold)
+                if(parseInt(rows[i]['ploss']) > parseInt(req.query.ploss_threshold))
+                {
+                    if(!bExist){
+                        alert_list[CONST_SERVERSTATUS][key+'ploss'] = 1
+                        resp_alerts[rows[i]['server_id'] + 'ploss'] = 1;
+                    }
+                }
+                else if(bExist){
+                    delete alert_list[CONST_SERVERSTATUS][key+'ploss']
+                }
+            }
+
+            return res.status(200).send({"data":rows, "x_total_count": rowCount, "alerts":resp_alerts});
         }catch(error){
             console.log(sql);
             return res.status(400).send(error);
@@ -1553,7 +1606,27 @@ module.exports = {
 
         try{
             const { rows, rowCount } = await global.query(sql);
-            return res.status(200).send({"data":rows, "x_total_count": rowCount});
+
+            var resp_alerts = {}
+
+            for(let i=0; i<rowCount; i++){
+                let key = req.body.user.id + '_' + rows[i]['namea'] + '_' + groupby_type;
+
+                let bExist = alert_list[CONST_SETALERT].hasOwnProperty(key)
+                // console.log(rows[i]['ping_mean'], req.query.ping_mean_threshold)
+                if(parseInt(rows[i]['user_count_pro']) > parseInt(req.query.user_count_pro))
+                {
+                    if(!bExist){
+                        alert_list[CONST_SETALERT][key] = 1
+                        resp_alerts[rows[i]['namea']] = 1;
+                    }
+                }
+                else if(bExist){
+                    delete alert_list[CONST_SETALERT][key]
+                }
+            }
+
+            return res.status(200).send({"data":rows, "x_total_count": rowCount, "alerts":resp_alerts});
         }catch(error){
             console.log(sql);
             return res.status(400).send(error);
@@ -1568,23 +1641,79 @@ module.exports = {
      * @param {*} next 
      */
     async getMonitoringServerGameStatus(req, res, next){
-        sql = `with cte as (select row_number() over (partition by server_id, game_server_id
-                                order by updated_at desc) as rn,
-                            server_id, game_server_id,  ping_mean, packet_loss, updated_at
-                        from public.monitoring_server_results_day 
-                        where
-                            server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='server') 
-                            and game_server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='game')
-                    ) 
-                select server_id, b.name sname, game_server_id, d.name gname, coalesce(c.name,'-') id_name, ping_mean, packet_loss, to_char(updated_at, 'YYYY-MM-DD  HH24:MI') updated_at
-                    from cte a left join server_info b on a.server_id=b.id 
-                    left join game_info_server c on a.game_server_id=c.id
-                    left join game_info d on c.game_id = d.id
-                    where rn=1`;
+        // sql = `with cte as (select row_number() over (partition by server_id, game_server_id
+        //                         order by updated_at desc) as rn,
+        //                     server_id, game_server_id,  ping_mean, packet_loss, updated_at
+        //                 from public.monitoring_server_results_day 
+        //                 where
+        //                     server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='server') 
+        //                     and game_server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='game')
+        //             ) 
+        //         select server_id, b.name sname, game_server_id, d.name gname, coalesce(c.name,'-') id_name, ping_mean, packet_loss, to_char(updated_at, 'YYYY-MM-DD  HH24:MI') updated_at
+        //             from cte a left join server_info b on a.server_id=b.id 
+        //             left join game_info_server c on a.game_server_id=c.id
+        //             left join game_info d on c.game_id = d.id
+        //             where rn=1`;
 
+        sql = `with cte as (select * from (select row_number() over
+                        (partition by server_id, game_server_id
+                order by updated_at desc) as rn,
+                server_id, game_server_id,  ping_mean, packet_loss, updated_at
+                from public.monitoring_server_results_day
+                where
+                server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='server')
+                and game_server_id in (select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='game')) xx
+                where rn=1)
+                select x.server_id, b.name sname, x.server_game_id game_server_id, d.name gname, coalesce(c.name,'-') id_name, c.ip ipaddress, coalesce(ping_mean, -1) ping_mean, coalesce(packet_loss, -1) packet_loss, to_char(updated_at,
+                'YYYY-MM-DD  HH24:MI') updated_at
+                from (select server_game_id, server_id
+                from (
+                select server_game_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='game'
+                ) y natural join(
+                select server_game_id server_id from public.monitor_server_game where user_id='${req.body.user.id}' and type='server'
+                ) z
+                ) x
+                left join cte a on (x.server_game_id=a.game_server_id and x.server_id=a.server_id)
+                left join server_info b on x.server_id=b.id
+                left join game_info_server c on x.server_game_id=c.id
+                left join game_info d on c.game_id = d.id`
+
+// console.log(alert_list);
         try{
             const { rows, rowCount } = await global.query(sql);
-            return res.status(200).send({"data":rows, "x_total_count": rowCount});
+
+            var resp_alerts = {}
+
+            for(let i=0; i<rowCount; i++){
+                let key = req.body.user.id + '_' + rows[i]['server_id'] + '_' + rows[i]['game_server_id'];
+
+                let bExist = alert_list[CONST_SERVERGAME].hasOwnProperty(key+'pm')
+                // console.log(rows[i]['ping_mean'], req.query.ping_mean_threshold)
+                if(parseInt(rows[i]['ping_mean']) > parseInt(req.query.ping_mean_threshold))
+                {
+                    if(!bExist){
+                        alert_list[CONST_SERVERGAME][key+'pm'] = 1
+                        resp_alerts[rows[i]['server_id'] + 'pm' + rows[i]['game_server_id']] = 1;
+                    }
+                }
+                else if(bExist){
+                    delete alert_list[CONST_SERVERGAME][key+'pm']
+                }
+
+                bExist = alert_list[CONST_SERVERGAME].hasOwnProperty(key+'pl')
+                if(parseInt(rows[i]['packet_loss']) > parseInt(req.query.packet_loss_threshold))
+                {
+                    if(!bExist){
+                        alert_list[CONST_SERVERGAME][key+'pl'] = 1
+                        resp_alerts[rows[i]['server_id'] + 'pl' + rows[i]['game_server_id']] = 1;
+                    }
+                }
+                else if(bExist){
+                    delete alert_list[CONST_SERVERGAME][key+'pl']
+                }
+            }
+
+            return res.status(200).send({"data":rows, "x_total_count": rowCount, "alerts":resp_alerts});
         }catch(error){
             console.log(sql);
             return res.status(400).send(error);
@@ -1641,12 +1770,12 @@ module.exports = {
                     left join (
                         select client_id, isp from client_info_login ) b using(client_id)`;
         }
-        
+
         else
             sql = `select server_id, name, packet_loss_times, ip, isp 
                 from 
                     (select server_id, string_agg(distinct(to_char(last_update, 'YYYY-MM-DD HH24:MI')), ',') packet_loss_times 
-                        from client_info_server_network group by server_id)a 
+                        from client_info_server_network group by server_id) a 
                 left join server_info b on a.server_id=b.id where 1=1 ${company_id_s}`;
 
         try{
