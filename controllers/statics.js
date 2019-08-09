@@ -20,7 +20,7 @@ module.exports = {
         var company_id = req.body.user.company_id!='0' ? ("and company_id=" + req.body.user.company_id) : "";
         var company_id_s = req.body.user.company_id!='0' ? `and id in (select server_id from servers_x_company where company_id=${req.body.user.company_id})` : "";
 
-        var sql_total = `select total_users_online, peak_users_online, unique_users, total_servers_online, total_servers_offline, packet_loss_improvement::integer, ping_improvement::integer
+        var sql_total = `select total_users_online, peak_users_online, unique_users, total_servers_online, total_servers_offline, to_char(packet_loss_improvement, '990d99') packet_loss_improvement, to_char(ping_improvement, '990d99') ping_improvement
                         from (
                             select 1 id, count(*) as total_users_online from client_info where 
                             (EXTRACT(EPOCH FROM (now()::timestamp - updated_at::timestamp)))<300 ${company_id}
@@ -45,8 +45,10 @@ module.exports = {
                             (EXTRACT(EPOCH FROM (now()::timestamp - last_update::timestamp)))>300 ${company_id_s}
                         ) e using(id)
                         join (
-                            select 1 id, avg((packet_loss_without-packet_loss_with)*100/(packet_loss_without+(packet_loss_without=0)::integer)) packet_loss_improvement,
-                                        avg((ping_without-ping_with)*100/(ping_without+(ping_without=0)::integer)) ping_improvement
+                            select 1 id, avg((case when packet_loss_without<packet_loss_with then 0
+                                                else packet_loss_without-packet_loss_with end)*100/(packet_loss_without+(packet_loss_without=0)::integer)) packet_loss_improvement,
+                                        avg((case when ping_without<ping_with then 0
+                                            else ping_without-ping_with end)*100/(ping_without+(ping_without=0)::integer)) ping_improvement
                             from public.client_info_network_day where client_id in (select id from client_info where 1=1 ${company_id})
                         ) f using(id)
                             `;
@@ -148,6 +150,7 @@ module.exports = {
             on a.client_id = c.id) 
         group by a.game_id ) as x left join public.game_info as y on x.game_id = y.id  ${orderby} ${limit} ${offset}`;
 
+        console.log(sql);
         try{
             const { rows, rowCount } = await global.query(sql);
         
@@ -180,18 +183,23 @@ module.exports = {
         var limit = "limit " + req.query._limit;
         var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
         var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        var search_query = "";
+        if(req.query.name_like)
+            search_query = "where name like '%" + req.query.name_like + "%'"
     
         var sql = `	select a.*, coalesce(c.count,0) count from company_info a 
                     left join 
                         (select b.company_id, count(b.id) count from public.client_info as b 
                             where (EXTRACT(EPOCH FROM (now()::timestamp - b.updated_at::timestamp)))<300 group by b.company_id ) as c 
-                    on a.id = c.company_id  ${orderby} ${limit} ${offset}`;
+                    on a.id = c.company_id ${search_query} ${orderby} ${limit} ${offset}`;
 
         try{
             const { rows, rowCount } = await global.query(sql);
         
             return res.status(200).send({"data":rows, "x_total_count": total_count});
         }catch(error){
+            console.log(sql);
             return res.status(400).send(error);
         }
     },
@@ -306,6 +314,16 @@ module.exports = {
                 case 'lastyear':  duration = `where (a.update_at >= (current_date - interval '365 day'))`; break;
             }
         }
+
+        page_no = parseInt(req.query._page, 10);
+        var limit = "limit " + req.query._limit;
+        var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+        var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
+        var search_query = "";
+        if(req.query.name_like)
+            search_query = "where name like '%" + req.query.name_like + "%'"
+
         if(req.body.user.company_id!='0'){
             var client_ids = ("and a.client_id in (select id from client_info where company_id=" + req.body.user.company_id) + ")"
             var sql_total = `select count(*) from (select a.game_id from 
@@ -320,16 +338,12 @@ module.exports = {
             }catch(error){
                 return res.status(400).send(error);
             }
-        
-            page_no = parseInt(req.query._page, 10);
-            var limit = "limit " + req.query._limit;
-            var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
-            var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+
 
             var sql = `select x.*, y.name as gamename 
                         from	(select a.game_id, count(a.client_id) as user_online_count from 
                         public.client_game_info as a ${duration} ${client_ids}
-                        group by a.game_id  ) as x left join public.game_info as y on x.game_id = y.id ${orderby} ${limit} ${offset}`;
+                        group by a.game_id  ) as x left join public.game_info as y on x.game_id = y.id ${search_query} ${orderby} ${limit} ${offset}`;
             
             try{
                 const { rows, rowCount } = await global.query(sql);
@@ -366,9 +380,9 @@ module.exports = {
                 }
             }
 
-            var limit = "limit " + req.query._limit;
-            var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
-            var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
+            // var limit = "limit " + req.query._limit;
+            // var offset = "offset " + (page_no-1) * parseInt(req.query._limit, 10);
+            // var orderby = req.query._sort ? ("order by " + req.query._sort + " " + req.query._order) : "";
 
             var sql = `select d.name, coalesce(count,0) count 
                         from company_info d 
@@ -378,11 +392,11 @@ module.exports = {
                                         left join client_info c on b.client_id=c.id
                                         group by c.company_id
                                     ) e 
-                        on d.id=e.company_id ${orderby} ${limit} ${offset}`;
+                        on d.id=e.company_id ${search_query} ${orderby} ${limit} ${offset}`;
             
             try{
                 const { rows, rowCount } = await global.query(sql);
-                if(page_no==1)
+                if(page_no==1 && search_query=="")
                     rows.splice(0,0,{name:'Total', count:total_peak_users})
                 return res.status(200).send({"data":rows, "x_total_count": total_count});
             }catch(error){
